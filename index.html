@@ -3,32 +3,103 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MTurk HIT Monitor - Test Page</title>
+  <title>📥 MTurk HIT Queue Monitor</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       background: #f4f4f4;
-      text-align: center;
-      padding: 50px;
+      padding: 20px;
     }
     h1 {
-      color: #333;
+      text-align: center;
+      color: #222;
     }
-    .box {
+    table {
+      width: 100%;
+      border-collapse: collapse;
       background: white;
-      padding: 20px;
-      margin: 20px auto;
-      border-radius: 8px;
-      max-width: 500px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background: #333;
+      color: white;
+    }
+    tr:nth-child(even) {
+      background: #f9f9f9;
+    }
+    .status {
+      text-align: center;
+      margin-top: 10px;
+      color: #666;
     }
   </style>
 </head>
 <body>
-  <div class="box">
-    <h1>🚀 GitHub Pages is Working!</h1>
-    <p>If you see this page, your <b>400err2</b> repo is live on GitHub Pages.</p>
-    <p>Next, we can add the <b>MTurk HIT Queue Monitor</b> script here.</p>
-  </div>
+  <h1>📥 MTurk HIT Queue Monitor</h1>
+  <p class="status">Waiting for data...</p>
+
+  <table id="hitTable" style="display:none;">
+    <thead>
+      <tr>
+        <th>Requester</th>
+        <th>Title</th>
+        <th>Reward ($)</th>
+        <th>Worker ID</th>
+        <th>Time Remaining</th>
+        <th>Assignment ID</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    // Webhook endpoint (replace with your actual one)
+    const WEBHOOK_URL = "https://webhook.site/80b9e516-aa1b-4893-98d3-f805e22a358f";
+
+    async function fetchData() {
+      try {
+        // Fetch last 1 request from webhook.site history
+        const response = await fetch(WEBHOOK_URL, { method: "GET" });
+        if (!response.ok) return;
+
+        const text = await response.text();
+        let data;
+
+        try {
+          data = JSON.parse(text);
+        } catch {
+          document.querySelector(".status").innerText = "⚠️ No valid HIT data received yet.";
+          return;
+        }
+
+        if (data && data.event === "hit_accepted") {
+          document.querySelector(".status").style.display = "none";
+          const table = document.getElementById("hitTable");
+          table.style.display = "table";
+
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${data.requester || "-"}</td>
+            <td>${data.title || "-"}</td>
+            <td>${data.reward || "-"}</td>
+            <td>${data.workerId || "-"}</td>
+            <td>${data.time_remaining || "-"}</td>
+            <td>${data.assignment_id || "-"}</td>
+          `;
+          table.querySelector("tbody").prepend(row);
+        }
+      } catch (e) {
+        console.error("Fetch error:", e);
+      }
+    }
+
+    // Poll every 5s
+    setInterval(fetchData, 5000);
+  </script>
 </body>
 </html>
