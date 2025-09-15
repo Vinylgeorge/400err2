@@ -1,43 +1,78 @@
-// ==UserScript==
-// @name         MTurk HIT → JSONBin
-// @namespace    Violentmonkey Scripts
-// @match        https://worker.mturk.com/tasks*
-// @grant        GM_xmlhttpRequest
-// ==/UserScript==
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MTurk HITs Monitor</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background: #f8f9fa; }
+    h1 { color: #333; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; }
+    th { background: #007bff; color: white; }
+    tr:nth-child(even) { background: #f2f2f2; }
+  </style>
+</head>
+<body>
+  <h1>📥 Accepted HITs Queue</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>Requester</th>
+        <th>Title</th>
+        <th>Reward</th>
+        <th>Worker ID</th>
+        <th>Assignment ID</th>
+        <th>HIT ID</th>
+        <th>Time Remaining</th>
+        <th>Accepted At</th>
+      </tr>
+    </thead>
+    <tbody id="hits">
+      <tr><td colspan="8">⏳ Loading...</td></tr>
+    </tbody>
+  </table>
 
-(function() {
-  'use strict';
+  <script>
+    async function loadHits() {
+      const binId = "68c88afcd0ea881f407f17fd"; // your Bin ID
+      const url = `https://api.jsonbin.io/v3/b/${binId}/latest`;
 
-  function sendHitToJsonBin(hit) {
-    const binId = "68c88afcd0ea881f407f17fd";    // your Bin ID
-    const apiKey = "$2a$10$tGWSdPOsZbt7ecxcUqPwaOPrtBrw84TrZQDZtPvWN5Hpm595sHtUm"; // your API key
+      try {
+        const res = await fetch(url);
+        const json = await res.json();
+        let hits = json.record;
 
-    GM_xmlhttpRequest({
-      method: "PUT",
-      url: `https://api.jsonbin.io/v3/b/${binId}`,
-      headers: {
-        "Content-Type": "application/json",
-        "X-Master-Key": apiKey
-      },
-      data: JSON.stringify(hit),
-      onload: res => console.log("✅ HIT saved:", res.responseText),
-      onerror: err => console.error("❌ Error saving:", err)
-    });
-  }
+        if (!hits) {
+          document.getElementById("hits").innerHTML = 
+            `<tr><td colspan="8">⚠️ No HITs found</td></tr>`;
+          return;
+        }
 
-  // Example test HIT (replace with your real MTurk hook later)
-  const exampleHit = {
-    event: "hit_accepted",
-    requester: "Shopping Receipts",
-    reward: "0.01",
-    workerId: "A27WGJXVQ1H0UB",
-    assignmentId: "31QTRG6Q2UXOQYJNSRS5PPNZ893PY6",
-    hitId: "372AGES0I4OHGMCYAL5RMMK99WYXRR",
-    title: "Extract General Data & Items From Shopping Receipt",
-    timeRemainingSeconds: 3599,
-    time: new Date().toISOString()
-  };
+        // Ensure it's always an array
+        if (!Array.isArray(hits)) hits = [hits];
 
-  // Test send once
-  sendHitToJsonBin(exampleHit);
-})();
+        const rows = hits.map(hit => `
+          <tr>
+            <td>${hit.requester}</td>
+            <td>${hit.title}</td>
+            <td>$${hit.reward}</td>
+            <td>${hit.workerId}</td>
+            <td>${hit.assignmentId}</td>
+            <td>${hit.hitId}</td>
+            <td>${hit.timeRemainingSeconds}s</td>
+            <td>${hit.time}</td>
+          </tr>
+        `).join("");
+
+        document.getElementById("hits").innerHTML = rows;
+      } catch (e) {
+        document.getElementById("hits").innerHTML =
+          `<tr><td colspan="8">❌ Error fetching HITs</td></tr>`;
+        console.error(e);
+      }
+    }
+
+    loadHits();
+    setInterval(loadHits, 10000); // refresh every 10 sec
+  </script>
+</body>
+</html>
