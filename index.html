@@ -1,18 +1,44 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>MTurk HITs Monitor</title>
+  <meta charset="UTF-8">
+  <title>MTurk HITs Viewer</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background: #f8f9fa; }
-    h1 { color: #333; }
-    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-    th, td { border: 1px solid #ccc; padding: 8px 12px; text-align: left; }
-    th { background: #007bff; color: white; }
-    tr:nth-child(even) { background: #f2f2f2; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f9f9f9;
+    }
+    h1 {
+      text-align: center;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: white;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ddd;
+      text-align: left;
+    }
+    th {
+      background: #0073e6;
+      color: white;
+    }
+    tr:nth-child(even) {
+      background: #f2f2f2;
+    }
+    .small {
+      font-size: 12px;
+      color: #555;
+    }
   </style>
 </head>
 <body>
-  <h1>📥 Accepted HITs Queue</h1>
+  <h1>📋 MTurk HITs Queue</h1>
   <table>
     <thead>
       <tr>
@@ -20,59 +46,65 @@
         <th>Title</th>
         <th>Reward</th>
         <th>Worker ID</th>
-        <th>Assignment ID</th>
-        <th>HIT ID</th>
         <th>Time Remaining</th>
         <th>Accepted At</th>
       </tr>
     </thead>
-    <tbody id="hits">
-      <tr><td colspan="8">⏳ Loading...</td></tr>
+    <tbody id="hitsTable">
+      <tr><td colspan="6">Loading...</td></tr>
     </tbody>
   </table>
 
   <script>
-    async function loadHits() {
-      const binId = "68c88afcd0ea881f407f17fd"; // your Bin ID
-      const url = `https://api.jsonbin.io/v3/b/${binId}/latest`;
+    const binId = "68c88afcd0ea881f407f17fd"; // Your Bin ID
+    const apiKey = "$2a$10$tGWSdPOsZbt7ecxcUqPwaOPrtBrw84TrZQDZtPvWN5Hpm595sHtUm"; // Your API key
+    const url = `https://api.jsonbin.io/v3/b/${binId}/latest`;
 
+    async function fetchHits() {
       try {
-        const res = await fetch(url);
-        const json = await res.json();
-        let hits = json.record;
+        const res = await fetch(url, {
+          headers: { "X-Master-Key": apiKey }
+        });
+        const data = await res.json();
 
-        if (!hits) {
-          document.getElementById("hits").innerHTML = 
-            `<tr><td colspan="8">⚠️ No HITs found</td></tr>`;
+        const hits = data.record || [];
+        const tableBody = document.getElementById("hitsTable");
+        tableBody.innerHTML = "";
+
+        if (hits.length === 0) {
+          tableBody.innerHTML = "<tr><td colspan='6'>No HITs found.</td></tr>";
           return;
         }
 
-        // Ensure it's always an array
-        if (!Array.isArray(hits)) hits = [hits];
-
-        const rows = hits.map(hit => `
-          <tr>
-            <td>${hit.requester}</td>
-            <td>${hit.title}</td>
-            <td>$${hit.reward}</td>
-            <td>${hit.workerId}</td>
-            <td>${hit.assignmentId}</td>
-            <td>${hit.hitId}</td>
-            <td>${hit.timeRemainingSeconds}s</td>
-            <td>${hit.time}</td>
-          </tr>
-        `).join("");
-
-        document.getElementById("hits").innerHTML = rows;
-      } catch (e) {
-        document.getElementById("hits").innerHTML =
-          `<tr><td colspan="8">❌ Error fetching HITs</td></tr>`;
-        console.error(e);
+        hits.slice().reverse().forEach(hit => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${hit.requester || "Unknown"}</td>
+            <td>${hit.title || "N/A"}</td>
+            <td>$${hit.reward || "0.00"}</td>
+            <td class="small">${hit.workerId || ""}</td>
+            <td>${formatTimeRemaining(hit.timeRemainingSeconds)}</td>
+            <td class="small">${new Date(hit.time).toLocaleString()}</td>
+          `;
+          tableBody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error("❌ Error fetching hits:", err);
+        document.getElementById("hitsTable").innerHTML =
+          "<tr><td colspan='6'>Error loading HITs</td></tr>";
       }
     }
 
-    loadHits();
-    setInterval(loadHits, 10000); // refresh every 10 sec
+    function formatTimeRemaining(seconds) {
+      if (!seconds) return "N/A";
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return `${m}m ${s}s`;
+    }
+
+    // Fetch every 5 seconds
+    fetchHits();
+    setInterval(fetchHits, 5000);
   </script>
 </body>
 </html>
