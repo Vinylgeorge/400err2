@@ -1,105 +1,99 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>📥 MTurk HIT Queue Monitor</title>
+  <meta charset="utf-8">
+  <title>MTurk HIT Monitor</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f4f4;
-      padding: 20px;
-    }
-    h1 {
-      text-align: center;
-      color: #222;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: white;
-      margin-top: 20px;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 8px;
-      text-align: center;
-    }
-    th {
-      background: #333;
-      color: white;
-    }
-    tr:nth-child(even) {
-      background: #f9f9f9;
-    }
-    .status {
-      text-align: center;
-      margin-top: 10px;
-      color: #666;
-    }
+    body { font-family: Arial, sans-serif; background: #f9f9f9; margin: 20px; }
+    h2 { color: #333; }
+    .hit { background: white; padding: 10px; margin: 10px 0; border-radius: 6px; box-shadow: 0 0 5px #ccc; }
+    button { margin-top: 10px; padding: 5px 10px; }
   </style>
 </head>
 <body>
-  <h1>📥 MTurk HIT Queue Monitor</h1>
-  <p class="status">Waiting for data...</p>
-
-  <table id="hitTable" style="display:none;">
-    <thead>
-      <tr>
-        <th>Requester</th>
-        <th>Title</th>
-        <th>Reward ($)</th>
-        <th>Worker ID</th>
-        <th>Time Remaining</th>
-        <th>Assignment ID</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <h2>📥 Accepted HITs</h2>
+  <button onclick="clearHits()">🗑 Clear Saved HITs</button>
+  <div id="hits">Loading...</div>
 
   <script>
-    // Webhook endpoint (replace with your actual one)
-    const WEBHOOK_URL = "https://webhook.site/80b9e516-aa1b-4893-98d3-f805e22a358f";
+    const BIN_ID = "80b9e516-aa1b-4893-98d3-f805e22a358f";  
+    const API_TOKEN = "YOUR_API_TOKEN_HERE";  // replace with your token
 
-    async function fetchData() {
+    // Load saved HITs from localStorage
+    function loadSavedHits() {
+      const saved = localStorage.getItem("hits");
+      return saved ? JSON.parse(saved) : [];
+    }
+
+    // Save HITs to localStorage
+    function saveHits(hits) {
+      localStorage.setItem("hits", JSON.stringify(hits));
+    }
+
+    // Clear HITs
+    function clearHits() {
+      localStorage.removeItem("hits");
+      renderHits([]);
+    }
+
+    // Render HITs in UI
+    function renderHits(hits) {
+      const container = document.getElementById("hits");
+      container.innerHTML = "";
+
+      if (!hits.length) {
+        container.innerHTML = "No HITs yet...";
+        return;
+      }
+
+      hits.forEach(hit => {
+        const div = document.createElement("div");
+        div.className = "hit";
+        div.innerHTML = `
+          <b>Requester:</b> ${hit.requester}<br>
+          <b>Reward:</b> $${hit.reward}<br>
+          <b>Worker ID:</b> ${hit.workerId}<br>
+          <b>Time:</b> ${new Date(hit.time).toLocaleString()}
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    // Fetch new HITs from Webhook.site API
+    async function fetchHits() {
       try {
-        // Fetch last 1 request from webhook.site history
-        const response = await fetch(WEBHOOK_URL, { method: "GET" });
-        if (!response.ok) return;
+        const res = await fetch(`https://webhook.site/token/${API_TOKEN}/requests?bin=${BIN_ID}`);
+        const data = await res.json();
 
-        const text = await response.text();
-        let data;
+        let savedHits = loadSavedHits();
 
-        try {
-          data = JSON.parse(text);
-        } catch {
-          document.querySelector(".status").innerText = "⚠️ No valid HIT data received yet.";
-          return;
-        }
+        data.data.forEach(req => {
+          if (req.method === "POST" && req.content) {
+            try {
+              const payload = JSON.parse(req.content);
+              // Avoid duplicates
+              if (!savedHits.find(h => h.assignmentId === payload.assignmentId && h.time === payload.time)) {
+                savedHits.unshift(payload); // add newest on top
+              }
+            } catch (e) {
+              console.log("Not JSON:", req.content);
+            }
+          }
+        });
 
-        if (data && data.event === "hit_accepted") {
-          document.querySelector(".status").style.display = "none";
-          const table = document.getElementById("hitTable");
-          table.style.display = "table";
-
-          const row = document.createElement("tr");
-          row.innerHTML = `
-            <td>${data.requester || "-"}</td>
-            <td>${data.title || "-"}</td>
-            <td>${data.reward || "-"}</td>
-            <td>${data.workerId || "-"}</td>
-            <td>${data.time_remaining || "-"}</td>
-            <td>${data.assignment_id || "-"}</td>
-          `;
-          table.querySelector("tbody").prepend(row);
-        }
-      } catch (e) {
-        console.error("Fetch error:", e);
+        // Save and render
+        saveHits(savedHits);
+        renderHits(savedHits);
+      } catch (err) {
+        console.error("API error", err);
+        document.getElementById("hits").innerHTML = "⚠️ Error fetching data";
       }
     }
 
-    // Poll every 5s
-    setInterval(fetchData, 5000);
+    // Initial load
+    renderHits(loadSavedHits());
+    setInterval(fetchHits, 10000); // poll every 10s
+    fetchHits();
   </script>
 </body>
 </html>
