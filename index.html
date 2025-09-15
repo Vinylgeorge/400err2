@@ -2,104 +2,33 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>MTurk HIT Queue Monitor</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MTurk HIT Monitor - Test Page</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 20px;
-      background: #f9f9f9;
+      background: #f4f4f4;
+      text-align: center;
+      padding: 50px;
     }
     h1 {
-      text-align: center;
       color: #333;
     }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      background: #fff;
-      box-shadow: 0 0 6px rgba(0,0,0,0.1);
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px 12px;
-      text-align: left;
-    }
-    th {
-      background: #007bff;
-      color: white;
-    }
-    tr:nth-child(even) {
-      background: #f2f2f2;
+    .box {
+      background: white;
+      padding: 20px;
+      margin: 20px auto;
+      border-radius: 8px;
+      max-width: 500px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
   </style>
 </head>
 <body>
-  <h1>📥 MTurk HIT Queue Monitor</h1>
-
-  <table id="hitsTable">
-    <thead>
-      <tr>
-        <th>Requester</th>
-        <th>Title</th>
-        <th>Reward</th>
-        <th>Worker ID</th>
-        <th>Time Remaining</th>
-        <th>Assignment ID</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr><td colspan="6" style="text-align:center;">Waiting for data...</td></tr>
-    </tbody>
-  </table>
-
-  <script>
-    // Your webhook.site token
-    const WEBHOOK_TOKEN = "80b9e516-aa1b-4893-98d3-f805e22a358f";
-
-    async function fetchHits() {
-      try {
-        const res = await fetch(`https://webhook.site/token/${WEBHOOK_TOKEN}/requests`);
-        const data = await res.json();
-
-        const tbody = document.querySelector("#hitsTable tbody");
-        tbody.innerHTML = "";
-
-        data.data.forEach(req => {
-          try {
-            const body = JSON.parse(req.content);
-            if (body.event === "hit_accepted") {
-              const mins = body.timeRemainingSeconds ? 
-                           Math.floor(body.timeRemainingSeconds / 60) + "m " + (body.timeRemainingSeconds % 60) + "s"
-                           : "-";
-              const row = document.createElement("tr");
-              row.innerHTML = `
-                <td>${body.requester || "-"}</td>
-                <td>${body.title || "-"}</td>
-                <td>$${body.reward || "0.00"}</td>
-                <td>${body.workerId || "-"}</td>
-                <td>${mins}</td>
-                <td>${body.assignmentId || "-"}</td>
-              `;
-              tbody.appendChild(row);
-            }
-          } catch (err) {
-            // Ignore parsing errors
-          }
-        });
-
-        if (!tbody.hasChildNodes()) {
-          const row = document.createElement("tr");
-          row.innerHTML = `<td colspan="6" style="text-align:center;">No HITs accepted yet</td>`;
-          tbody.appendChild(row);
-        }
-      } catch (err) {
-        console.error("Error fetching webhook data:", err);
-      }
-    }
-
-    // Refresh every 5 seconds
-    setInterval(fetchHits, 5000);
-    fetchHits();
-  </script>
+  <div class="box">
+    <h1>🚀 GitHub Pages is Working!</h1>
+    <p>If you see this page, your <b>400err2</b> repo is live on GitHub Pages.</p>
+    <p>Next, we can add the <b>MTurk HIT Queue Monitor</b> script here.</p>
+  </div>
 </body>
 </html>
