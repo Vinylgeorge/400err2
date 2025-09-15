@@ -19,20 +19,23 @@
     <thead>
       <tr>
         <th>Requester</th>
+        <th>Title</th>
         <th>Reward</th>
         <th>Worker ID</th>
-        <th>Time Remaining</th>
         <th>Assignment ID</th>
+        <th>Hit ID</th>
+        <th>Time Remaining</th>
+        <th>Received At</th>
       </tr>
     </thead>
     <tbody id="hits">
-      <tr><td colspan="5">Loading…</td></tr>
+      <tr><td colspan="8">Loading…</td></tr>
     </tbody>
   </table>
 
   <script>
-    const API_TOKEN = "c118ce90-2599-4b3d-a0d7-74a646c68bf5"; // your token
-    const BIN_ID = "80b9e516-aa1b-4893-98d3-f805e22a358f";   // your webhook bin id
+    const API_TOKEN = "c118ce90-2599-4b3d-a0d7-74a646c68bf5"; // your API token
+    const BIN_ID = "80b9e516-aa1b-4893-98d3-f805e22a358f";   // your bin id
 
     async function fetchHits() {
       try {
@@ -51,15 +54,20 @@
             try {
               const payload = JSON.parse(req.content);
 
-              const tr = document.createElement("tr");
-              tr.innerHTML = `
-                <td>${payload.requester || "-"}</td>
-                <td>${payload.reward || "-"}</td>
-                <td>${payload.workerId || "-"}</td>
-                <td>${payload.timeRemaining || "-"}</td>
-                <td>${payload.assignmentId || "-"}</td>
-              `;
-              tbody.appendChild(tr);
+              if (payload.event === "hit_accepted") {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                  <td>${payload.requester || "-"}</td>
+                  <td>${payload.title || "-"}</td>
+                  <td>${payload.reward || "-"}</td>
+                  <td>${(payload.workerId || "-").replace("COPIED\\n", "")}</td>
+                  <td>${payload.assignmentId || "-"}</td>
+                  <td>${payload.hitId || "-"}</td>
+                  <td>${payload.timeRemainingSeconds ? Math.floor(payload.timeRemainingSeconds/60) + "m " + (payload.timeRemainingSeconds%60) + "s" : "-"}</td>
+                  <td>${payload.time || "-"}</td>
+                `;
+                tbody.appendChild(tr);
+              }
             } catch (e) {
               console.log("Not JSON:", req.content);
             }
@@ -67,13 +75,13 @@
         });
 
         if (!tbody.hasChildNodes()) {
-          tbody.innerHTML = "<tr><td colspan='5'>No HITs found</td></tr>";
+          tbody.innerHTML = "<tr><td colspan='8'>No HITs found</td></tr>";
         }
 
       } catch (err) {
         console.error(err);
         document.getElementById("hits").innerHTML = 
-          `<tr><td colspan='5'>⚠️ Error fetching data</td></tr>`;
+          `<tr><td colspan='8'>⚠️ Error fetching data</td></tr>`;
       }
     }
 
