@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>MTurk Queue — JSONBin Viewer</title>
-
+  <title>MTurk Queue — JSONBin + Google Sheet Credentials</title>
   <style>
+    /* (same styles as before) */
     :root{
       --bg:#f7f8fa;
       --card:#ffffff;
@@ -13,95 +13,34 @@
       --accent:#0f62fe;
       --border:#e6e9ef;
     }
-    body{
-      font-family: Inter, Roboto, Arial, sans-serif;
-      background: var(--bg);
-      margin: 0;
-      padding: 24px;
-      color: #111827;
-    }
-    .wrap{
-      max-width: 1100px;
-      margin: 0 auto;
-    }
-    header{
-      display:flex;
-      gap:16px;
-      align-items:center;
-      margin-bottom:18px;
-    }
+    body{ font-family: Inter, Roboto, Arial, sans-serif; background: var(--bg); margin: 0; padding: 24px; color: #111827; }
+    .wrap{ max-width:1100px; margin:0 auto; }
+    header{ display:flex; gap:16px; align-items:center; margin-bottom:18px; flex-wrap:wrap; }
     h1{ margin:0; font-size:20px; }
-    .controls{
-      margin-left:auto;
-      display:flex;
-      gap:10px;
-      align-items:center;
-      color:var(--muted);
-    }
-    button{
-      background:var(--accent);
-      color:#fff;
-      border:0;
-      padding:8px 10px;
-      border-radius:8px;
-      cursor:pointer;
-      font-weight:600;
-    }
-    button.secondary{
-      background:#fff;
-      color:var(--accent);
-      border:1px solid var(--accent);
-      padding:7px 10px;
-    }
-    .card{
-      background:var(--card);
-      border-radius:10px;
-      padding:12px;
-      box-shadow: 0 1px 0 rgba(15,20,30,0.03);
-      border:1px solid var(--border);
-    }
-    table{
-      width:100%;
-      border-collapse:collapse;
-      font-size:14px;
-    }
-    thead th{
-      text-align:left;
-      font-size:13px;
-      color:var(--muted);
-      padding:10px 8px;
-      border-bottom:1px solid var(--border);
-      position:sticky;
-      top:0;
-      background:linear-gradient(#fff,#fff);
-    }
-    tbody td{
-      padding:10px 8px;
-      border-bottom:1px solid #f1f3f5;
-      vertical-align:middle;
-    }
+    .controls{ margin-left:auto; display:flex; gap:10px; align-items:center; color:var(--muted); flex-wrap:wrap; }
+    button{ background:var(--accent); color:#fff; border:0; padding:8px 10px; border-radius:8px; cursor:pointer; font-weight:600; }
+    button.secondary{ background:#fff; color:var(--accent); border:1px solid var(--accent); }
+    .card{ background:var(--card); border-radius:10px; padding:12px; box-shadow: 0 1px 0 rgba(15,20,30,0.03); border:1px solid var(--border); }
+    table{ width:100%; border-collapse:collapse; font-size:14px; }
+    thead th{ text-align:left; font-size:13px; color:var(--muted); padding:10px 8px; border-bottom:1px solid var(--border); position:sticky; top:0; background:linear-gradient(#fff,#fff); }
+    tbody td{ padding:10px 8px; border-bottom:1px solid #f1f3f5; vertical-align:middle; }
     tbody tr:hover{ background:#fbfdff; }
-    .muted{ color:var(--muted); font-size:13px; }
     a.hit-link{ color:var(--accent); text-decoration:none; font-weight:600; }
     .small{ font-size:13px; color:var(--muted); }
-    .empty{
-      padding:40px;
-      text-align:center;
-      color:var(--muted);
-    }
-    .status{ font-size:13px; color:var(--muted); margin-left:8px;}
-    .switch{display:flex;align-items:center;gap:6px}
-    input[type="checkbox"]{ transform:scale(1.05); }
-    footer{ margin-top:12px; color:var(--muted); font-size:13px; }
+    .empty{ padding:40px; text-align:center; color:var(--muted); }
+    label.inline{ display:flex; gap:8px; align-items:center; }
+    input.text{ padding:8px; border-radius:8px; border:1px solid var(--border); min-width:340px; }
+    .cred-status{ padding:8px 12px; font-size:13px; color:var(--muted); }
     @media (max-width:720px){
       thead th:nth-child(3), tbody td:nth-child(3), thead th:nth-child(5), tbody td:nth-child(5) { display:none; }
+      input.text{ min-width:150px; }
     }
   </style>
 </head>
 <body>
   <div class="wrap">
     <header>
-      <h1>MTurk Queue — JSONBin Viewer</h1>
+      <h1>MTurk Queue — JSONBin + Google Sheet Credentials</h1>
       <div class="controls">
         <label class="switch">
           <input id="autoRefresh" type="checkbox" />
@@ -109,37 +48,45 @@
         </label>
         <button id="refreshBtn">Refresh</button>
       </div>
+      <div style="display:flex; gap:10px; align-items:center; margin-left:8px;">
+        <label class="inline">
+          <input id="sheetUrl" class="text" type="text" value="https://docs.google.com/spreadsheets/d/1-7xUPOliQWs6VNUhF9mW6LMPSer2MI5VWTDLum6E95U/export?format=csv&gid=0" />
+        </label>
+        <button id="loadSheetBtn" class="secondary">Load credentials</button>
+      </div>
     </header>
 
     <div class="card">
-      <div id="tableContainer">
-        <div class="empty">Loading queue from JSONBin…</div>
-      </div>
+      <div id="tableContainer"><div class="empty">Loading queue from JSONBin…</div></div>
+      <div id="credNotice" class="cred-status" style="display:none;"></div>
     </div>
-
-    <footer>
-      <div>
-        <strong>Source:</strong>
-        <span id="binInfo" class="small">jsonbin.io</span>
-      </div>
-    </footer>
+    <footer><div><strong>Source:</strong><span id="binInfo" class="small">jsonbin.io</span></div></footer>
   </div>
 
   <script>
-    // ----- CONFIGURE HERE -----
     const BIN_ID = "68c89a4fd0ea881f407f25c0";
     const API_KEY = "$2a$10$tGWSdPOsZbt7ecxcUqPwaOPrtBrw84TrZQDZtPvWN5Hpm595sHtUm";
-    // --------------------------
-
-    const REFRESH_INTERVAL_MS = 10000; // 10s
+    const REFRESH_INTERVAL_MS = 10000; 
     const tableContainer = document.getElementById("tableContainer");
     const refreshBtn = document.getElementById("refreshBtn");
     const autoRefreshCheckbox = document.getElementById("autoRefresh");
     const binInfo = document.getElementById("binInfo");
 
+    const sheetUrlInput = document.getElementById("sheetUrl");
+    const loadSheetBtn = document.getElementById("loadSheetBtn");
+    const credNotice = document.getElementById("credNotice");
+
     const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
     binInfo.textContent = `jsonbin.io — bin: ${BIN_ID}`;
 
+    let credsMap = {};
+    let sheetCsvUrl = sheetUrlInput.value.trim();
+    let objectUrls = [];
+
+    function safeText(str){
+      if (str == null) return "";
+      return String(str).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+    }
     function fmtTimeRemaining(sec){
       if (sec == null || isNaN(sec)) return "-";
       const m = Math.floor(sec/60);
@@ -147,55 +94,58 @@
       return `${m}m ${s}s`;
     }
     function fmtAcceptedAt(iso){
-      if(!iso) return "-";
+      if (!iso) return "-";
       try { return new Date(iso).toLocaleString(); }
       catch(e){ return iso; }
     }
-    function safeText(str){
-      if (str == null) return "";
-      return String(str).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+    function storeObjectUrl(url){
+      objectUrls.push(url);
+      if (objectUrls.length > 60) {
+        const old = objectUrls.shift();
+        try { URL.revokeObjectURL(old); } catch(e){}
+      }
     }
-
+    function makeRdpDownloadUrl({ host, username, password }) {
+      let payload = `full address:s:${host}\nusername:s:${username}\n`;
+      if (password) payload += `;password (insecure): ${password}\n`;
+      const blob = new Blob([payload], { type: "application/rdp" });
+      const url = URL.createObjectURL(blob);
+      storeObjectUrl(url);
+      return url;
+    }
     function buildTable(hits){
-      if (!Array.isArray(hits) || hits.length === 0) {
+      if (!Array.isArray(hits) || hits.length === 0){
         tableContainer.innerHTML = `<div class="empty">No hits in queue.</div>`;
         return;
       }
-
       const html = [];
-      html.push(`<table aria-label="MTurk queue">`);
-      html.push(`<thead><tr>
-        <th>Requester</th>
-        <th>Title</th>
-        <th>Reward</th>
-        <th>Worker ID</th>
-        <th>Time Remaining</th>
-        <th>Accepted At</th>
-      </tr></thead>`);
-      html.push(`<tbody>`);
+      html.push(`<table aria-label="MTurk queue"><thead><tr>
+        <th>Requester</th><th>Title</th><th>Reward</th><th>Worker ID</th><th>Time Remaining</th><th>Accepted At</th>
+      </tr></thead><tbody>`);
 
       for (const hit of hits){
         const uri = hit.url ? String(hit.url) : "#";
         const title = safeText(hit.title || hit.requester || "Untitled");
         const requester = safeText(hit.requester || "Unknown");
         const reward = (hit.reward == null) ? "-" : `$${Number(hit.reward).toFixed(2)}`;
-        const workerId = safeText(hit.workerId || "-");
+        const workerIdRaw = hit.workerId || "-";
+        const workerId = safeText(workerIdRaw);
         const timeRemaining = fmtTimeRemaining(Number(hit.timeRemainingSeconds));
         const acceptedAt = fmtAcceptedAt(hit.acceptedAt);
 
-        // RDP file content (⚠️ password field won't auto-fill unless encrypted)
-        const rdpContent = `
-full address:s:34.220.34.216
-username:s:administrator
-`;
-        const blob = new Blob([rdpContent], { type: "application/rdp" });
-        const rdpUrl = URL.createObjectURL(blob);
+        const cred = credsMap[String(workerIdRaw)] || credsMap[String(workerIdRaw).trim().toLowerCase()] || null;
+        const host = cred?.host || "34.220.34.216";
+        const username = cred?.username || "administrator";
+        const password = cred?.password || "";
+
+        const rdpUrl = makeRdpDownloadUrl({ host, username, password });
+        const filename = `${workerId || 'worker'}.rdp`;
 
         html.push(`<tr>
           <td>${requester}</td>
           <td><a class="hit-link" href="${uri}" target="_blank" rel="noopener noreferrer">${title}</a></td>
           <td>${reward}</td>
-          <td><a href="${rdpUrl}" download="${workerId}.rdp">${workerId}</a></td>
+          <td><a href="${rdpUrl}" download="${filename}">${workerId}</a></td>
           <td class="small">${timeRemaining}</td>
           <td class="small">${acceptedAt}</td>
         </tr>`);
@@ -206,39 +156,90 @@ username:s:administrator
     }
 
     async function fetchBin(){
-      const headers = API_KEY ? { "X-Master-Key": API_KEY, "Content-Type":"application/json" } : { "Content-Type":"application/json" };
+      const headers = API_KEY ? { "X-Master-Key": API_KEY, "Content-Type":"application/json"} : { "Content-Type":"application/json"};
       try {
-        const res = await fetch(BIN_URL, { headers, cache: "no-store" });
+        const res = await fetch(BIN_URL, { headers, cache:"no-store" });
         if (!res.ok) {
-          const text = await res.text();
-          throw new Error(`Fetch failed (${res.status}): ${text}`);
+          const txt = await res.text();
+          throw new Error(`Fetch failed (${res.status}): ${txt}`);
         }
-        const json = await res.json();
-        let hits = json?.record ?? json;
+        const js = await res.json();
+        let hits = js?.record ?? js;
         while (hits && typeof hits === "object" && !Array.isArray(hits) && hits.record && Array.isArray(hits.record)) {
           hits = hits.record;
         }
         if (!Array.isArray(hits)) {
-          throw new Error("Unexpected data format from JSONBin — expected an array at 'record'");
+          throw new Error("Unexpected data format — expected array of hits.");
         }
         buildTable(hits);
       } catch (err) {
-        console.error("Failed to load JSONBin:", err);
+        console.error("Error fetching JSONBin:", err);
         tableContainer.innerHTML = `<div class="empty">Failed to load JSONBin: ${safeText(err.message)}</div>`;
       }
     }
 
-    refreshBtn.addEventListener("click", () => fetchBin());
-    let intervalId = null;
+    async function loadCredentialsFromSheet(url){
+      if (!url){
+        credNotice.style.display = "block";
+        credNotice.textContent = "No sheet URL provided.";
+        return;
+      }
+      try {
+        credNotice.style.display = "block";
+        credNotice.textContent = "Loading credentials...";
+        const res = await fetch(url, { cache:"no-store" });
+        if (!res.ok) throw new Error(`Failed to fetch sheet CSV (${res.status})`);
+        const txt = await res.text();
+        // assume CSV
+        const items = [];
+        const rows = txt.trim().split(/\r?\n/).filter(r => r);
+        const hdr = rows[0].split(",").map(h => h.trim().toLowerCase());
+        for (let i = 1; i < rows.length; i++){
+          const cols = rows[i].split(",").map(c => c.trim());
+          const obj = {};
+          for (let j = 0; j < hdr.length; j++){
+            obj[hdr[j]] = cols[j] ?? "";
+          }
+          items.push(obj);
+        }
+        credsMap = {};
+        for (const it of items){
+          const wid = it.workerid || "";
+          if (!wid) continue;
+          credsMap[wid] = {
+            host: it.host || "",
+            username: it.username || "",
+            password: it.password || ""
+          };
+          credsMap[wid.trim().toLowerCase()] = credsMap[wid];
+        }
+        credNotice.textContent = `Loaded credentials for ${Object.keys(credsMap).length/2} worker(s).`;
+        fetchBin();
+      } catch (err) {
+        console.error("Error loading sheet creds:", err);
+        credNotice.textContent = `Error loading credentials: ${err.message}`;
+      }
+    }
+
+    // Events
+    refreshBtn.addEventListener("click", () => {
+      fetchBin();
+    });
+    loadSheetBtn.addEventListener("click", () => {
+      sheetCsvUrl = sheetUrlInput.value.trim();
+      loadCredentialsFromSheet(sheetCsvUrl);
+    });
     autoRefreshCheckbox.addEventListener("change", (e) => {
-      if (e.target.checked) {
-        intervalId = setInterval(fetchBin, REFRESH_INTERVAL_MS);
-      } else {
-        clearInterval(intervalId);
-        intervalId = null;
+      if (e.target.checked){
+        setInterval(() => {
+          fetchBin();
+          if (sheetCsvUrl) loadCredentialsFromSheet(sheetCsvUrl);
+        }, REFRESH_INTERVAL_MS);
       }
     });
 
+    // on load
+    loadCredentialsFromSheet(sheetCsvUrl);
     fetchBin();
   </script>
 </body>
