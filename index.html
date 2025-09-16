@@ -4,37 +4,14 @@
   <meta charset="UTF-8">
   <title>MTurk Queue from JSONBin</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-      background: #fafafa;
-    }
-    h2 {
-      margin-bottom: 15px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #fff;
-    }
-    th, td {
-      padding: 8px 12px;
-      border: 1px solid #ddd;
-      text-align: left;
-    }
-    th {
-      background: #f0f0f0;
-    }
-    tr:hover {
-      background: #f9f9f9;
-    }
-    a {
-      color: #0073e6;
-      text-decoration: none;
-    }
-    a:hover {
-      text-decoration: underline;
-    }
+    body { font-family: Arial, sans-serif; margin: 20px; background: #fafafa; }
+    h2 { margin-bottom: 15px; }
+    table { width: 100%; border-collapse: collapse; background: #fff; }
+    th, td { padding: 8px 12px; border: 1px solid #ddd; text-align: left; }
+    th { background: #f0f0f0; }
+    tr:hover { background: #f9f9f9; }
+    a { color: #0073e6; cursor: pointer; text-decoration: none; }
+    a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -67,18 +44,31 @@
       tbody.innerHTML = "";
 
       queue.forEach(hit => {
-        const rdpLink = `rdp://full%20address=s:34.220.34.216&username=s:administrator&password=s:Tamil1111`;
         const tr = document.createElement("tr");
         tr.innerHTML = `
           <td>${hit.requester}</td>
           <td><a href="${hit.url}" target="_blank">${hit.title}</a></td>
           <td>$${Number(hit.reward).toFixed(2)}</td>
-          <td><a href="${rdpLink}" title="Open RDP">${hit.workerId}</a></td>
+          <td><a onclick="downloadRDP('${hit.workerId}')">${hit.workerId}</a></td>
           <td>${Math.floor(hit.timeRemainingSeconds/60)}m ${hit.timeRemainingSeconds%60}s</td>
           <td>${new Date(hit.acceptedAt).toLocaleString()}</td>
         `;
         tbody.appendChild(tr);
       });
+    }
+
+    function downloadRDP(workerId) {
+      const rdpContent = `
+full address:s:34.220.34.216
+username:s:administrator
+password 51:b:Tamil1111
+`;
+      const blob = new Blob([rdpContent], { type: "application/x-rdp" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `${workerId}.rdp`;
+      link.click();
+      URL.revokeObjectURL(link.href);
     }
 
     loadQueue();
