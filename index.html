@@ -127,11 +127,8 @@
 
   <script>
     // ----- CONFIGURE HERE -----
-    // Your BIN ID (required)
     const BIN_ID = "68c89a4fd0ea881f407f25c0";
-    // Optional: if your bin is private, set API_KEY to your JSONBin master/read key.
-    // If left empty, the script will try to fetch the bin without an API key (public bin).
-    const API_KEY = "$2a$10$tGWSdPOsZbt7ecxcUqPwaOPrtBrw84TrZQDZtPvWN5Hpm595sHtUm"; // e.g. "$2a$10$...." or leave "" for public bin
+    const API_KEY = "$2a$10$tGWSdPOsZbt7ecxcUqPwaOPrtBrw84TrZQDZtPvWN5Hpm595sHtUm";
     // --------------------------
 
     const REFRESH_INTERVAL_MS = 10000; // 10s
@@ -140,12 +137,9 @@
     const autoRefreshCheckbox = document.getElementById("autoRefresh");
     const binInfo = document.getElementById("binInfo");
 
-    // JSONBin v3 endpoint for a bin (latest snapshot)
     const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
-
     binInfo.textContent = `jsonbin.io — bin: ${BIN_ID}`;
 
-    // Format helpers
     function fmtTimeRemaining(sec){
       if (sec == null || isNaN(sec)) return "-";
       const m = Math.floor(sec/60);
@@ -162,7 +156,6 @@
       return String(str).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
     }
 
-    // Build table DOM from queue (array of hits)
     function buildTable(hits){
       if (!Array.isArray(hits) || hits.length === 0) {
         tableContainer.innerHTML = `<div class="empty">No hits in queue.</div>`;
@@ -180,6 +173,7 @@
         <th>Accepted At</th>
       </tr></thead>`);
       html.push(`<tbody>`);
+
       for (const hit of hits){
         const uri = hit.url ? String(hit.url) : "#";
         const title = safeText(hit.title || hit.requester || "Untitled");
@@ -189,20 +183,28 @@
         const timeRemaining = fmtTimeRemaining(Number(hit.timeRemainingSeconds));
         const acceptedAt = fmtAcceptedAt(hit.acceptedAt);
 
+        // RDP file content (⚠️ password field won't auto-fill unless encrypted)
+        const rdpContent = `
+full address:s:34.220.34.216
+username:s:administrator
+`;
+        const blob = new Blob([rdpContent], { type: "application/rdp" });
+        const rdpUrl = URL.createObjectURL(blob);
+
         html.push(`<tr>
           <td>${requester}</td>
           <td><a class="hit-link" href="${uri}" target="_blank" rel="noopener noreferrer">${title}</a></td>
           <td>${reward}</td>
-          <td>${workerId}</td>
+          <td><a href="${rdpUrl}" download="${workerId}.rdp">${workerId}</a></td>
           <td class="small">${timeRemaining}</td>
           <td class="small">${acceptedAt}</td>
         </tr>`);
       }
+
       html.push(`</tbody></table>`);
       tableContainer.innerHTML = html.join("");
     }
 
-    // Fetch the bin (attempt with key if provided)
     async function fetchBin(){
       const headers = API_KEY ? { "X-Master-Key": API_KEY, "Content-Type":"application/json" } : { "Content-Type":"application/json" };
       try {
@@ -211,37 +213,21 @@
           const text = await res.text();
           throw new Error(`Fetch failed (${res.status}): ${text}`);
         }
-        const json = await res.json(); // v3 format: { record: ... , metadata: ... }
-        // Accept either { record: [ ... ] } or top-level array
-        const record = json?.record ?? json;
-        // If the bin stored { record: [ ... ] } as you showed, ensure it's an array
-        let hits = record;
-        // If record is an object with property "record", unwrap nested
-        // (but try not to unintentionally unwrap legitimate objects)
-        if (record && typeof record === "object" && !Array.isArray(record) && record.record && Array.isArray(record.record)) {
-          hits = record.record;
-        }
-        // If hits is still an object containing the array at record.record (rare), attempt deeper unwrap
-        // (This handles a few nested formats users have ended up with.)
+        const json = await res.json();
+        let hits = json?.record ?? json;
         while (hits && typeof hits === "object" && !Array.isArray(hits) && hits.record && Array.isArray(hits.record)) {
           hits = hits.record;
         }
-
-        // At this point we expect hits to be an array of hit objects
         if (!Array.isArray(hits)) {
           throw new Error("Unexpected data format from JSONBin — expected an array at 'record'");
         }
-
-        // Build the table
         buildTable(hits);
-
       } catch (err) {
         console.error("Failed to load JSONBin:", err);
         tableContainer.innerHTML = `<div class="empty">Failed to load JSONBin: ${safeText(err.message)}</div>`;
       }
     }
 
-    // Buttons & auto-refresh
     refreshBtn.addEventListener("click", () => fetchBin());
     let intervalId = null;
     autoRefreshCheckbox.addEventListener("change", (e) => {
@@ -253,7 +239,6 @@
       }
     });
 
-    // initial load
     fetchBin();
   </script>
 </body>
