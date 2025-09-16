@@ -1,260 +1,87 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>MTurk Queue — JSONBin Viewer</title>
-
+  <meta charset="UTF-8">
+  <title>MTurk Queue from JSONBin</title>
   <style>
-    :root{
-      --bg:#f7f8fa;
-      --card:#ffffff;
-      --muted:#6b7280;
-      --accent:#0f62fe;
-      --border:#e6e9ef;
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #fafafa;
     }
-    body{
-      font-family: Inter, Roboto, Arial, sans-serif;
-      background: var(--bg);
-      margin: 0;
-      padding: 24px;
-      color: #111827;
+    h2 {
+      margin-bottom: 15px;
     }
-    .wrap{
-      max-width: 1100px;
-      margin: 0 auto;
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
     }
-    header{
-      display:flex;
-      gap:16px;
-      align-items:center;
-      margin-bottom:18px;
+    th, td {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      text-align: left;
     }
-    h1{ margin:0; font-size:20px; }
-    .controls{
-      margin-left:auto;
-      display:flex;
-      gap:10px;
-      align-items:center;
-      color:var(--muted);
+    th {
+      background: #f0f0f0;
     }
-    button{
-      background:var(--accent);
-      color:#fff;
-      border:0;
-      padding:8px 10px;
-      border-radius:8px;
-      cursor:pointer;
-      font-weight:600;
+    tr:hover {
+      background: #f9f9f9;
     }
-    button.secondary{
-      background:#fff;
-      color:var(--accent);
-      border:1px solid var(--accent);
-      padding:7px 10px;
+    a {
+      color: #0073e6;
+      text-decoration: none;
     }
-    .card{
-      background:var(--card);
-      border-radius:10px;
-      padding:12px;
-      box-shadow: 0 1px 0 rgba(15,20,30,0.03);
-      border:1px solid var(--border);
-    }
-    table{
-      width:100%;
-      border-collapse:collapse;
-      font-size:14px;
-    }
-    thead th{
-      text-align:left;
-      font-size:13px;
-      color:var(--muted);
-      padding:10px 8px;
-      border-bottom:1px solid var(--border);
-      position:sticky;
-      top:0;
-      background:linear-gradient(#fff,#fff);
-    }
-    tbody td{
-      padding:10px 8px;
-      border-bottom:1px solid #f1f3f5;
-      vertical-align:middle;
-    }
-    tbody tr:hover{ background:#fbfdff; }
-    .muted{ color:var(--muted); font-size:13px; }
-    a.hit-link{ color:var(--accent); text-decoration:none; font-weight:600; }
-    .small{ font-size:13px; color:var(--muted); }
-    .empty{
-      padding:40px;
-      text-align:center;
-      color:var(--muted);
-    }
-    .status{ font-size:13px; color:var(--muted); margin-left:8px;}
-    .switch{display:flex;align-items:center;gap:6px}
-    input[type="checkbox"]{ transform:scale(1.05); }
-    footer{ margin-top:12px; color:var(--muted); font-size:13px; }
-    @media (max-width:720px){
-      thead th:nth-child(3), tbody td:nth-child(3), thead th:nth-child(5), tbody td:nth-child(5) { display:none; }
+    a:hover {
+      text-decoration: underline;
     }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <h1>MTurk Queue — JSONBin Viewer</h1>
-      <div class="controls">
-        <label class="switch">
-          <input id="autoRefresh" type="checkbox" />
-          <span class="small">Auto-refresh (10s)</span>
-        </label>
-        <button id="refreshBtn">Refresh</button>
-      </div>
-    </header>
-
-    <div class="card">
-      <div id="tableContainer">
-        <div class="empty">Loading queue from JSONBin…</div>
-      </div>
-    </div>
-
-    <footer>
-      <div>
-        <strong>Source:</strong>
-        <span id="binInfo" class="small">jsonbin.io</span>
-      </div>
-    </footer>
-  </div>
-
-  <script>
-    // ----- CONFIGURE HERE -----
-    // Your BIN ID (required)
-    const BIN_ID = "68c89a4fd0ea881f407f25c0";
-    // Optional: if your bin is private, set API_KEY to your JSONBin master/read key.
-    // If left empty, the script will try to fetch the bin without an API key (public bin).
-    const API_KEY = "$2a$10$tGWSdPOsZbt7ecxcUqPwaOPrtBrw84TrZQDZtPvWN5Hpm595sHtUm"; // e.g. "$2a$10$...." or leave "" for public bin
-    // --------------------------
-
-    const REFRESH_INTERVAL_MS = 10000; // 10s
-    const tableContainer = document.getElementById("tableContainer");
-    const refreshBtn = document.getElementById("refreshBtn");
-    const autoRefreshCheckbox = document.getElementById("autoRefresh");
-    const binInfo = document.getElementById("binInfo");
-
-    // JSONBin v3 endpoint for a bin (latest snapshot)
-    const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
-
-    binInfo.textContent = `jsonbin.io — bin: ${BIN_ID}`;
-
-    // Format helpers
-    function fmtTimeRemaining(sec){
-      if (sec == null || isNaN(sec)) return "-";
-      const m = Math.floor(sec/60);
-      const s = sec % 60;
-      return `${m}m ${s}s`;
-    }
-    function fmtAcceptedAt(iso){
-      if(!iso) return "-";
-      try { return new Date(iso).toLocaleString(); }
-      catch(e){ return iso; }
-    }
-    function safeText(str){
-      if (str == null) return "";
-      return String(str).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
-    }
-
-    // Build table DOM from queue (array of hits)
-    function buildTable(hits){
-      if (!Array.isArray(hits) || hits.length === 0) {
-        tableContainer.innerHTML = `<div class="empty">No hits in queue.</div>`;
-        return;
-      }
-
-      const html = [];
-      html.push(`<table aria-label="MTurk queue">`);
-      html.push(`<thead><tr>
+  <h2>MTurk Queue Snapshot</h2>
+  <table id="queueTable">
+    <thead>
+      <tr>
         <th>Requester</th>
         <th>Title</th>
         <th>Reward</th>
-        <th>Worker ID</th>
+        <th>Worker ID (RDP)</th>
         <th>Time Remaining</th>
         <th>Accepted At</th>
-      </tr></thead>`);
-      html.push(`<tbody>`);
-      for (const hit of hits){
-        const uri = hit.url ? String(hit.url) : "#";
-        const title = safeText(hit.title || hit.requester || "Untitled");
-        const requester = safeText(hit.requester || "Unknown");
-        const reward = (hit.reward == null) ? "-" : `$${Number(hit.reward).toFixed(2)}`;
-        const workerId = safeText(hit.workerId || "-");
-        const timeRemaining = fmtTimeRemaining(Number(hit.timeRemainingSeconds));
-        const acceptedAt = fmtAcceptedAt(hit.acceptedAt);
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
-        html.push(`<tr>
-          <td>${requester}</td>
-          <td><a class="hit-link" href="${uri}" target="_blank" rel="noopener noreferrer">${title}</a></td>
-          <td>${reward}</td>
-          <td>${workerId}</td>
-          <td class="small">${timeRemaining}</td>
-          <td class="small">${acceptedAt}</td>
-        </tr>`);
-      }
-      html.push(`</tbody></table>`);
-      tableContainer.innerHTML = html.join("");
+  <script>
+    async function loadQueue() {
+      const res = await fetch("https://api.jsonbin.io/v3/b/68c89a4fd0ea881f407f25c0/latest", {
+        headers: {
+          "X-Master-Key": "$2a$10$tGWSdPOsZbt7ecxcUqPwaOPrtBrw84TrZQDZtPvWN5Hpm595sHtUm"
+        }
+      });
+      const data = await res.json();
+      const queue = data.record || [];
+
+      const tbody = document.querySelector("#queueTable tbody");
+      tbody.innerHTML = "";
+
+      queue.forEach(hit => {
+        const rdpLink = `rdp://full%20address=s:34.220.34.216&username=s:administrator&password=s:Tamil1111`;
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${hit.requester}</td>
+          <td><a href="${hit.url}" target="_blank">${hit.title}</a></td>
+          <td>$${Number(hit.reward).toFixed(2)}</td>
+          <td><a href="${rdpLink}" title="Open RDP">${hit.workerId}</a></td>
+          <td>${Math.floor(hit.timeRemainingSeconds/60)}m ${hit.timeRemainingSeconds%60}s</td>
+          <td>${new Date(hit.acceptedAt).toLocaleString()}</td>
+        `;
+        tbody.appendChild(tr);
+      });
     }
 
-    // Fetch the bin (attempt with key if provided)
-    async function fetchBin(){
-      const headers = API_KEY ? { "X-Master-Key": API_KEY, "Content-Type":"application/json" } : { "Content-Type":"application/json" };
-      try {
-        const res = await fetch(BIN_URL, { headers, cache: "no-store" });
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(`Fetch failed (${res.status}): ${text}`);
-        }
-        const json = await res.json(); // v3 format: { record: ... , metadata: ... }
-        // Accept either { record: [ ... ] } or top-level array
-        const record = json?.record ?? json;
-        // If the bin stored { record: [ ... ] } as you showed, ensure it's an array
-        let hits = record;
-        // If record is an object with property "record", unwrap nested
-        // (but try not to unintentionally unwrap legitimate objects)
-        if (record && typeof record === "object" && !Array.isArray(record) && record.record && Array.isArray(record.record)) {
-          hits = record.record;
-        }
-        // If hits is still an object containing the array at record.record (rare), attempt deeper unwrap
-        // (This handles a few nested formats users have ended up with.)
-        while (hits && typeof hits === "object" && !Array.isArray(hits) && hits.record && Array.isArray(hits.record)) {
-          hits = hits.record;
-        }
-
-        // At this point we expect hits to be an array of hit objects
-        if (!Array.isArray(hits)) {
-          throw new Error("Unexpected data format from JSONBin — expected an array at 'record'");
-        }
-
-        // Build the table
-        buildTable(hits);
-
-      } catch (err) {
-        console.error("Failed to load JSONBin:", err);
-        tableContainer.innerHTML = `<div class="empty">Failed to load JSONBin: ${safeText(err.message)}</div>`;
-      }
-    }
-
-    // Buttons & auto-refresh
-    refreshBtn.addEventListener("click", () => fetchBin());
-    let intervalId = null;
-    autoRefreshCheckbox.addEventListener("change", (e) => {
-      if (e.target.checked) {
-        intervalId = setInterval(fetchBin, REFRESH_INTERVAL_MS);
-      } else {
-        clearInterval(intervalId);
-        intervalId = null;
-      }
-    });
-
-    // initial load
-    fetchBin();
+    loadQueue();
   </script>
 </body>
 </html>
