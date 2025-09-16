@@ -2,83 +2,67 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>MTurk Queue</title>
+  <title>MTurk Queue (from JSONBin)</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; background: #fafafa; }
-    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-    th { background: #333; color: #fff; }
-    tr:nth-child(even) { background: #f9f9f9; }
-    h2 { margin-bottom: 10px; }
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background-color: #f2f2f2; }
   </style>
 </head>
 <body>
+  <h1>MTurk Queue (from JSONBin)</h1>
 
-<h2 id="queue-header">Your HITs Queue (0)</h2>
+  <table id="queueTable">
+    <thead>
+      <tr>
+        <th>Requester</th>
+        <th>Title</th>
+        <th>Reward</th>
+        <th>Worker ID</th>
+        <th>Time Remaining</th>
+        <th>Accepted At</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
-<table>
-  <thead>
-    <tr>
-      <th>Requester</th>
-      <th>Title</th>
-      <th>Reward</th>
-      <th>Worker ID</th>
-      <th>Time Remaining</th>
-      <th>Accepted At</th>
-    </tr>
-  </thead>
-  <tbody id="queue-body">
-    <!-- Rows will be injected here -->
-  </tbody>
-</table>
+  <script>
+    const binId = "68c89a4fd0ea881f407f25c0";   // ✅ your Bin ID
+    const apiKey = "$2a$10$tGWSdPOsZbt7ecxcUqPwaOPrtBrw84TrZQDZtPvWN5Hpm595sHtUm"; // ✅ your API key
+    const url = `https://api.jsonbin.io/v3/b/${binId}/latest`;
 
-<script>
-  const binId = "68c89a4fd0ea881f407f25c0"; // 🔑 your bin ID
-  const apiKey = "$2a$10$tGWSdPOsZbt7ecxcUqPwaOPrtBrw84TrZQDZtPvWN5Hpm595sHtUm"; // 🔑 your API key
-  const url = `https://api.jsonbin.io/v3/b/${binId}/latest`;
+    async function loadQueue() {
+      try {
+        const res = await fetch(url, {
+          headers: { "X-Master-Key": apiKey }
+        });
+        const data = await res.json();
+        const queue = data.record || [];
 
-  function formatTimeRemaining(seconds) {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}m ${s}s`;
-  }
+        const body = document.querySelector("#queueTable tbody");
+        body.innerHTML = "";
 
-  async function loadQueue() {
-    try {
-      const res = await fetch(url, {
-        headers: { "X-Master-Key": apiKey }
-      });
-      const data = await res.json();
-      const hits = data.record || [];
-
-      const tbody = document.getElementById("queue-body");
-      const header = document.getElementById("queue-header");
-
-      tbody.innerHTML = ""; // clear old rows
-
-      hits.forEach(hit => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${hit.requester}</td>
-          <td>${hit.title}</td>
-          <td>$${hit.reward}</td>
-          <td>${hit.workerId}</td>
-          <td>${formatTimeRemaining(hit.timeRemainingSeconds || 0)}</td>
-          <td>${new Date(hit.acceptedAt || hit.time).toLocaleString()}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-
-      header.textContent = `Your HITs Queue (${hits.length})`;
-    } catch (err) {
-      console.error("❌ Error loading queue:", err);
+        queue.forEach(hit => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${hit.requester || "Unknown"}</td>
+            <td>${hit.title || "N/A"}</td>
+            <td>$${Number(hit.reward || 0).toFixed(2)}</td>
+            <td>${hit.workerId || ""}</td>
+            <td>${hit.timeRemainingSeconds || 0} sec</td>
+            <td>${hit.acceptedAt || ""}</td>
+          `;
+          body.appendChild(row);
+        });
+      } catch (err) {
+        console.error("❌ Failed to load queue:", err);
+      }
     }
-  }
 
-  // Initial load + refresh every 10s
-  loadQueue();
-  setInterval(loadQueue, 10000);
-</script>
-
+    // Run once + auto refresh every 15s
+    loadQueue();
+    setInterval(loadQueue, 15000);
+  </script>
 </body>
 </html>
