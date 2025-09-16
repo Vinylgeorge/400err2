@@ -5,15 +5,17 @@
   <title>MTurk Queue</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; background: #fafafa; }
-    table { border-collapse: collapse; width: 100%; }
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
     th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
     th { background: #333; color: #fff; }
     tr:nth-child(even) { background: #f9f9f9; }
+    h2 { margin-bottom: 10px; }
   </style>
 </head>
 <body>
 
-<h2>Your HITs Queue</h2>
+<h2 id="queue-header">Your HITs Queue (0)</h2>
+
 <table>
   <thead>
     <tr>
@@ -31,51 +33,32 @@
 </table>
 
 <script>
-  // Example scraped data (replace with your live scraped array)
-  const queueData = [
-    {
-      requester: "ooga.io",
-      title: "Identify viable survey opportunities - v2",
-      reward: "0.05",
-      workerId: "A27WGJXVQ1H0UB",
-      timeRemainingSeconds: 1251,
-      acceptedAt: "2025-09-15T22:47:04.000Z"
-    },
-    {
-      requester: "Shopping Receipts",
-      title: "Extract General Data & Items From Shopping Receipt",
-      reward: "0.01",
-      workerId: "A27WGJXVQ1H0UB",
-      timeRemainingSeconds: 1776,
-      acceptedAt: "2025-09-15T23:25:49.000Z"
-    }
-  ];
-
   function formatTimeRemaining(seconds) {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}m ${secs}s`;
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}m ${s}s`;
   }
 
-  function renderQueue(queue) {
-    const tbody = document.getElementById("queue-body");
-    tbody.innerHTML = ""; // clear existing rows
-    queue.forEach(hit => {
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td>${hit.requester}</td>
-        <td>${hit.title}</td>
-        <td>$${hit.reward}</td>
-        <td>${hit.workerId}</td>
-        <td>${formatTimeRemaining(hit.timeRemainingSeconds)}</td>
-        <td>${new Date(hit.acceptedAt).toLocaleString()}</td>
-      `;
-      tbody.appendChild(row);
-    });
-  }
+  // Load queue from localStorage (set by your userscript)
+  const queueData = JSON.parse(localStorage.getItem("mturkQueue") || "[]");
+  const tbody = document.getElementById("queue-body");
+  const header = document.getElementById("queue-header");
 
-  // Render the queue
-  renderQueue(queueData);
+  queueData.forEach(hit => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${hit.requester}</td>
+      <td>${hit.title}</td>
+      <td>$${hit.reward}</td>
+      <td>${hit.workerId}</td>
+      <td>${formatTimeRemaining(hit.timeRemainingSeconds || 0)}</td>
+      <td>${new Date(hit.acceptedAt || hit.time).toLocaleString()}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // Update header with row count
+  header.textContent = `Your HITs Queue (${queueData.length})`;
 </script>
 
 </body>
