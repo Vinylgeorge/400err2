@@ -33,32 +33,51 @@
 </table>
 
 <script>
+  const binId = "68c89a4fd0ea881f407f25c0"; // 🔑 your bin ID
+  const apiKey = "$2a$10$tGWSdPOsZbt7ecxcUqPwaOPrtBrw84TrZQDZtPvWN5Hpm595sHtUm"; // 🔑 your API key
+  const url = `https://api.jsonbin.io/v3/b/${binId}/latest`;
+
   function formatTimeRemaining(seconds) {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${m}m ${s}s`;
   }
 
-  // Load queue from localStorage (set by your userscript)
-  const queueData = JSON.parse(localStorage.getItem("mturkQueue") || "[]");
-  const tbody = document.getElementById("queue-body");
-  const header = document.getElementById("queue-header");
+  async function loadQueue() {
+    try {
+      const res = await fetch(url, {
+        headers: { "X-Master-Key": apiKey }
+      });
+      const data = await res.json();
+      const hits = data.record || [];
 
-  queueData.forEach(hit => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${hit.requester}</td>
-      <td>${hit.title}</td>
-      <td>$${hit.reward}</td>
-      <td>${hit.workerId}</td>
-      <td>${formatTimeRemaining(hit.timeRemainingSeconds || 0)}</td>
-      <td>${new Date(hit.acceptedAt || hit.time).toLocaleString()}</td>
-    `;
-    tbody.appendChild(tr);
-  });
+      const tbody = document.getElementById("queue-body");
+      const header = document.getElementById("queue-header");
 
-  // Update header with row count
-  header.textContent = `Your HITs Queue (${queueData.length})`;
+      tbody.innerHTML = ""; // clear old rows
+
+      hits.forEach(hit => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${hit.requester}</td>
+          <td>${hit.title}</td>
+          <td>$${hit.reward}</td>
+          <td>${hit.workerId}</td>
+          <td>${formatTimeRemaining(hit.timeRemainingSeconds || 0)}</td>
+          <td>${new Date(hit.acceptedAt || hit.time).toLocaleString()}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      header.textContent = `Your HITs Queue (${hits.length})`;
+    } catch (err) {
+      console.error("❌ Error loading queue:", err);
+    }
+  }
+
+  // Initial load + refresh every 10s
+  loadQueue();
+  setInterval(loadQueue, 10000);
 </script>
 
 </body>
