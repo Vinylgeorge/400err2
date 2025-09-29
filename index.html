@@ -1,203 +1,46 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html>
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>MTurk Queue — JSONBin + Google Sheet Credentials</title>
+  <meta charset="utf-8">
+  <title>AB2soft Global Controller</title>
   <style>
-    :root{
-      --bg:#f7f8fa;
-      --card:#ffffff;
-      --muted:#6b7280;
-      --accent:#0f62fe;
-      --border:#e6e9ef;
-    }
-    body{ font-family: Inter, Roboto, Arial, sans-serif; background: var(--bg); margin: 0; padding: 24px; color: #111827; }
-    .wrap{ max-width:1100px; margin:0 auto; }
-    header{ display:flex; gap:16px; align-items:center; margin-bottom:18px; flex-wrap:wrap; }
-    h1{ margin:0; font-size:20px; }
-    .controls{ margin-left:auto; display:flex; gap:10px; align-items:center; color:var(--muted); flex-wrap:wrap; }
-    button{ background:var(--accent); color:#fff; border:0; padding:8px 10px; border-radius:8px; cursor:pointer; font-weight:600; }
-    button.secondary{ background:#fff; color:var(--accent); border:1px solid var(--accent); }
-    .card{ background:var(--card); border-radius:10px; padding:12px; box-shadow: 0 1px 0 rgba(15,20,30,0.03); border:1px solid var(--border); }
-    table{ width:100%; border-collapse:collapse; font-size:14px; }
-    thead th{ text-align:left; font-size:13px; color:var(--muted); padding:10px 8px; border-bottom:1px solid var(--border); position:sticky; top:0; background:linear-gradient(#fff,#fff); }
-    tbody td{ padding:10px 8px; border-bottom:1px solid #f1f3f5; vertical-align:middle; }
-    tbody tr:hover{ background:#fbfdff; }
-    a.hit-link{ color:var(--accent); text-decoration:none; font-weight:600; }
-    .small{ font-size:13px; color:var(--muted); }
-    .empty{ padding:40px; text-align:center; color:var(--muted); }
-    .cred-status{ padding:8px 12px; font-size:13px; color:var(--muted); }
-    input.text{ padding:6px; border-radius:6px; border:1px solid var(--border); min-width:340px; }
+    body { font-family: Arial; background:#f8f9fa; padding:40px; }
+    input, button { padding:10px; margin:6px 0; font-size:15px; width:100%; }
+    button { cursor:pointer; background:#0f62fe; color:white; border:none; border-radius:6px; }
+    button.stop { background:#dc2626; }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <h1>MTurk Queue</h1>
-      <div class="controls">
-        <label class="switch">
-          <input id="autoRefresh" type="checkbox" />
-          <span class="small">Auto-refresh (10s)</span>
-        </label>
-        <button id="refreshBtn">Refresh</button>
-      </div>
-      <div style="display:flex; gap:10px; align-items:center;">
-        <input id="sheetUrl" class="text" type="text"
-          value="https://docs.google.com/spreadsheets/d/1-7xUPOliQWs6VNUhF9mW6LMPSer2MI5VWTDLum6E95U/export?format=csv&gid=0" />
-        <button id="loadSheetBtn" class="secondary">Load credentials</button>
-      </div>
-    </header>
-
-    <div class="card">
-      <div id="tableContainer"><div class="empty">Loading queue…</div></div>
-      <div id="credNotice" class="cred-status" style="display:none;"></div>
-    </div>
-
-    <footer><div><strong>Source:</strong> <span id="binInfo" class="small"></span></div></footer>
-  </div>
+  <h2>AB2soft Global HIT Controller</h2>
+  <input id="req" placeholder="Requester ID (e.g. A15ZSKX8TUCGEU)">
+  <input id="limit" type="number" placeholder="Number of HITs (e.g. 5)" value="5">
+  <button id="start">Start</button>
+  <button id="stop" class="stop">Stop</button>
+  <p id="msg"></p>
 
   <script>
-    // ----- CONFIG -----
-    const BIN_ID = "68c89a4fd0ea881f407f25c0"; // your JSONBin bin
-    const API_KEY = "$2a$10$tGWSdPOsZbt7ecxcUqPwaOPrtBrw84TrZQDZtPvWN5Hpm595sHtUm"; // or ""
-    const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
-    const REFRESH_INTERVAL_MS = 10000;
-    // ------------------
+    const CONTROL_URL = "https://aqua-theo-29.tiiny.site/protected/control.json"; // your hosted control.json
 
-    const tableContainer = document.getElementById("tableContainer");
-    const refreshBtn = document.getElementById("refreshBtn");
-    const autoRefreshCheckbox = document.getElementById("autoRefresh");
-    const sheetUrlInput = document.getElementById("sheetUrl");
-    const loadSheetBtn = document.getElementById("loadSheetBtn");
-    const credNotice = document.getElementById("credNotice");
-    const binInfo = document.getElementById("binInfo");
-    binInfo.textContent = `jsonbin.io — bin: ${BIN_ID}`;
-
-    let credsMap = {};
-    let sheetCsvUrl = sheetUrlInput.value.trim();
-    let objectUrls = [];
-
-    function safeText(str){ return str == null ? "" : String(str).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;"); }
-    function fmtTimeRemaining(sec){ if (!sec) return "-"; const m=Math.floor(sec/60),s=sec%60; return `${m}m ${s}s`; }
-    function fmtAcceptedAt(iso){ if(!iso) return "-"; try{ return new Date(iso).toLocaleString(); }catch(e){return iso;} }
-    function storeObjectUrl(url){ objectUrls.push(url); if(objectUrls.length>50){URL.revokeObjectURL(objectUrls.shift());} }
-    function makeRdpDownloadUrl({ host, username, password }) {
-      let payload = `full address:s:${host}\nusername:s:${username}\n`;
-      if (password) payload += `;password (insecure): ${password}\n`;
-      const blob = new Blob([payload], { type: "application/rdp" });
-      const url = URL.createObjectURL(blob); storeObjectUrl(url); return url;
+    async function update(active, requester, limit = 5) {
+      const body = JSON.stringify({ active, requester_id: requester, limit });
+      await fetch(CONTROL_URL, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body
+      });
+      document.getElementById('msg').innerText = active
+        ? `✅ Started for ${requester}`
+        : `⏹️ Stopped`;
     }
 
-    function buildTable(hits){
-      if (!Array.isArray(hits) || hits.length === 0) {
-        tableContainer.innerHTML = `<div class="empty">No hits in queue.</div>`;
-        return;
-      }
+    document.getElementById("start").onclick = () => {
+      const id = document.getElementById("req").value.trim();
+      const lim = parseInt(document.getElementById("limit").value || 5);
+      if (!id) return alert("Enter requester ID!");
+      update(true, id, lim);
+    };
 
-      // Group by HIT + WorkerId (merge duplicates)
-      const grouped = {};
-      for (const hit of hits){
-        const key = `${hit.requester}|${hit.title}|${hit.reward}|${hit.url}|${hit.workerId}`;
-        if (!grouped[key]) {
-          grouped[key] = { ...hit, count: 1 };
-        } else {
-          grouped[key].count++;
-          if (hit.acceptedAt && new Date(hit.acceptedAt) > new Date(grouped[key].acceptedAt||0)) {
-            grouped[key].acceptedAt = hit.acceptedAt;
-          }
-          if (hit.timeRemainingSeconds != null) {
-            grouped[key].timeRemainingSeconds = hit.timeRemainingSeconds;
-          }
-        }
-      }
-
-      const html = [];
-      html.push(`<table><thead><tr>
-        <th>Requester</th><th>Title</th><th>Reward</th><th>Worker ID</th><th>Time Remaining</th><th>Accepted At</th>
-      </tr></thead><tbody>`);
-
-      for (const key in grouped){
-        const hit = grouped[key];
-        const uri = hit.url ? String(hit.url) : "#";
-        let title = safeText(hit.title || hit.requester || "Untitled");
-        if (hit.count > 1) title += ` (${hit.count} times)`;
-
-        const requester = safeText(hit.requester || "Unknown");
-        const reward = hit.reward == null ? "-" : `$${Number(hit.reward).toFixed(2)}`;
-        const workerId = safeText(hit.workerId || "-");
-        const timeRemaining = fmtTimeRemaining(Number(hit.timeRemainingSeconds));
-        const acceptedAt = fmtAcceptedAt(hit.acceptedAt);
-
-        const cred = credsMap[String(workerId)] || credsMap[String(workerId).trim().toLowerCase()] || null;
-        const host = cred?.host || "34.220.34.216";
-        const username = cred?.username || "administrator";
-        const password = cred?.password || "";
-        const rdpUrl = makeRdpDownloadUrl({ host, username, password });
-
-        html.push(`<tr>
-          <td>${requester}</td>
-          <td><a class="hit-link" href="${uri}" target="_blank">${title}</a></td>
-          <td>${reward}</td>
-          <td><a href="${rdpUrl}" download="${workerId}.rdp">${workerId}</a></td>
-          <td class="small">${timeRemaining}</td>
-          <td class="small">${acceptedAt}</td>
-        </tr>`);
-      }
-
-      html.push(`</tbody></table>`);
-      tableContainer.innerHTML = html.join("");
-    }
-
-    async function fetchBin(){
-      const headers = API_KEY ? { "X-Master-Key": API_KEY } : {};
-      try {
-        const res = await fetch(BIN_URL, { headers, cache:"no-store" });
-        if (!res.ok) throw new Error(`Fetch failed ${res.status}`);
-        const js = await res.json();
-        let hits = js?.record ?? js;
-        while (hits && typeof hits==="object" && !Array.isArray(hits) && hits.record && Array.isArray(hits.record)) {
-          hits = hits.record;
-        }
-        if (!Array.isArray(hits)) throw new Error("Unexpected data format");
-        buildTable(hits);
-      } catch (err) {
-        tableContainer.innerHTML = `<div class="empty">Error: ${safeText(err.message)}</div>`;
-      }
-    }
-
-    async function loadCredentialsFromSheet(url){
-      if (!url) return;
-      try {
-        credNotice.style.display="block"; credNotice.textContent="Loading credentials...";
-        const res = await fetch(url, { cache:"no-store" });
-        if (!res.ok) throw new Error(`Failed ${res.status}`);
-        const txt = await res.text();
-        const rows = txt.trim().split(/\r?\n/).filter(r=>r);
-        const hdr = rows[0].split(",").map(h=>h.trim().toLowerCase());
-        credsMap={};
-        for (let i=1;i<rows.length;i++){
-          const cols = rows[i].split(",").map(c=>c.trim());
-          const obj={}; for (let j=0;j<hdr.length;j++){ obj[hdr[j]]=cols[j]||""; }
-          const wid=obj.workerid||""; if(!wid) continue;
-          credsMap[wid]= { host:obj.host||"", username:obj.username||"", password:obj.password||"" };
-          credsMap[wid.toLowerCase()]=credsMap[wid];
-        }
-        credNotice.textContent=`Loaded credentials for ${Object.keys(credsMap).length/2} worker(s).`;
-      } catch(e){ credNotice.textContent="Error: "+e.message; }
-    }
-
-    refreshBtn.addEventListener("click", ()=>{ fetchBin(); loadCredentialsFromSheet(sheetCsvUrl); });
-    loadSheetBtn.addEventListener("click", ()=>{ sheetCsvUrl=sheetUrlInput.value.trim(); loadCredentialsFromSheet(sheetCsvUrl); });
-    autoRefreshCheckbox.addEventListener("change", e=>{
-      if (e.target.checked){
-        setInterval(()=>{ fetchBin(); if(sheetCsvUrl) loadCredentialsFromSheet(sheetCsvUrl); }, REFRESH_INTERVAL_MS);
-      }
-    });
-
-    // initial load
-    loadCredentialsFromSheet(sheetCsvUrl);
-    fetchBin();
+    document.getElementById("stop").onclick = () => update(false, "", 0);
   </script>
 </body>
 </html>
