@@ -1,46 +1,68 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8">
-  <title>AB2soft Global Controller</title>
+  <meta charset="UTF-8" />
+  <title>MTurk Earnings Monitor – Live Dashboard</title>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCCtBCAJvQCDj8MXb2w90qYUqRrENIIGIQ",
+      authDomain: "mturk-monitordeep.firebaseapp.com",
+      projectId: "mturk-monitordeep",
+      storageBucket: "mturk-monitordeep.firebasestorage.app",
+      messagingSenderId: "58392297487",
+      appId: "1:58392297487:web:1365ad12110ffd0586637a"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const table = document.getElementById("data");
+
+    onSnapshot(collection(db, "earnings_logs"), (snapshot) => {
+      table.innerHTML = `
+        <tr>
+          <th>User</th>
+          <th>Worker ID</th>
+          <th>IP</th>
+          <th>Earnings</th>
+          <th>Bank</th>
+          <th>Next Transfer</th>
+          <th>Last Transfer</th>
+          <th>Updated</th>
+        </tr>
+      `;
+
+      snapshot.forEach((doc) => {
+        const d = doc.data();
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${d.user || "Unknown"}</td>
+          <td>${d.workerId}</td>
+          <td>${d.ip}</td>
+          <td>${d.currentEarnings}</td>
+          <td>${d.bankAccount}</td>
+          <td>${d.nextTransferDate}</td>
+          <td>${d.lastTransferDate}</td>
+          <td>${new Date(d.timestamp).toLocaleString()}</td>
+        `;
+        table.appendChild(row);
+      });
+    });
+  </script>
+
   <style>
-    body { font-family: Arial; background:#f8f9fa; padding:40px; }
-    input, button { padding:10px; margin:6px 0; font-size:15px; width:100%; }
-    button { cursor:pointer; background:#0f62fe; color:white; border:none; border-radius:6px; }
-    button.stop { background:#dc2626; }
+    body { font-family: Arial; background: #f9fafb; padding: 20px; color:#111; }
+    table { border-collapse: collapse; width: 100%; background: #fff; border-radius:8px; overflow:hidden; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align:left; }
+    th { background: #111; color:#fff; }
+    tr:hover { background: #f3f4f6; }
+    h1 { margin-bottom: 16px; }
   </style>
 </head>
 <body>
-  <h2>AB2soft Global HIT Controller</h2>
-  <input id="req" placeholder="Requester ID (e.g. A15ZSKX8TUCGEU)">
-  <input id="limit" type="number" placeholder="Number of HITs (e.g. 5)" value="5">
-  <button id="start">Start</button>
-  <button id="stop" class="stop">Stop</button>
-  <p id="msg"></p>
-
-  <script>
-    const CONTROL_URL = "https://aqua-theo-29.tiiny.site/protected/control.json"; // your hosted control.json
-
-    async function update(active, requester, limit = 5) {
-      const body = JSON.stringify({ active, requester_id: requester, limit });
-      await fetch(CONTROL_URL, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body
-      });
-      document.getElementById('msg').innerText = active
-        ? `✅ Started for ${requester}`
-        : `⏹️ Stopped`;
-    }
-
-    document.getElementById("start").onclick = () => {
-      const id = document.getElementById("req").value.trim();
-      const lim = parseInt(document.getElementById("limit").value || 5);
-      if (!id) return alert("Enter requester ID!");
-      update(true, id, lim);
-    };
-
-    document.getElementById("stop").onclick = () => update(false, "", 0);
-  </script>
+  <h1>📊 MTurk Earnings – Live Firebase Dashboard</h1>
+  <table id="data"></table>
 </body>
 </html>
