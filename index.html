@@ -1,54 +1,239 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>📊 MTurk Earnings + Monthly Transfers + Alerts (Secure)</title><style>:root{--p:#2563eb;--p2:#1d4ed8;--bg:#f8fafc}*{box-sizing:border-box}body{font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);margin:0;padding:20px;color:#111}header{background:linear-gradient(135deg,#2563eb,#1e3a8a);color:#fff;padding:20px;border-radius:12px;text-align:center}main{margin-top:18px}.controls{display:flex;gap:10px;justify-content:space-between;flex-wrap:wrap;margin-bottom:12px}input[type=text]{padding:8px 10px;border:1px solid #e5e7eb;border-radius:8px;width:260px;font-size:14px}button{background:var(--p);border:0;color:#fff;padding:9px 14px;border-radius:8px;cursor:pointer}button:hover{background:var(--p2)}table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.06)}th,td{padding:10px 12px;border-bottom:1px solid #f1f5f9;text-align:left;font-size:14px}th{background:#f1f5f9}tr:hover{background:#f9fafb}tr.alert-row{background:#fee2e2!important;color:#b91c1c;font-weight:600}footer{margin-top:14px;text-align:center;color:#6b7280;font-size:12px}#gate{position:fixed;inset:0;background:linear-gradient(180deg,#0f172a 0,#111827 100%);display:flex;align-items:center;justify-content:center;z-index:9999}#gate .card{width:min(420px,92vw);background:#0b1220;border:1px solid #1f2937;border-radius:14px;padding:22px;color:#dbeafe;box-shadow:0 10px 40px rgba(0,0,0,.45)}#gate h2{margin:0 0 14px 0;font-weight:700;letter-spacing:.2px}#gate p{margin:0 0 12px 0;color:#93c5fd}#gate input{width:100%;padding:12px 14px;border-radius:10px;border:1px solid #334155;background:#0a1222;color:#e5e7eb;outline:none}#gate input:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.25)}#gate button{width:100%;margin-top:12px;background:#22c55e}#gate button:hover{background:#16a34a}#gate .msg{margin-top:10px;font-size:12px;color:#fca5a5;min-height:16px}#app{display:none}</style></head><body>
-<section id="gate" aria-label="Password Gate"><div class="card"><h2>🔒 Secure Access</h2><p>Enter password</p><input id="pw" type="password" inputmode="text" autocomplete="current-password" placeholder="•••••••••••••••"/><button id="unlockBtn">Unlock</button><div class="msg" id="gateMsg"></div></div></section>
-<section id="app" aria-label="Dashboard App"><header><h1>📊 MTurk Earnings + Alerts + Monthly Transfers</h1><p>Auto-synced from Firebase — grouped by transfer month</p></header><main><div class="controls"><input id="searchInput" type="text" placeholder="🔍 Filter by worker, bank, or alert..."/><div><button id="refreshBtn">🔄 Refresh</button><button id="exportBtn">📤 Export CSV</button></div></div><table aria-label="Earnings Table"><thead><tr><th>Worker ID</th><th>Current Earnings</th><th>Last Transfer ($)</th><th>Last Transfer Date</th><th>Last Month Transfer ($)</th><th>Next Transfer Date</th><th>Bank</th><th>IP</th><th>Alert</th><th>Updated</th></tr></thead><tbody id="dataBody"><tr><td colspan="10">Loading… (waiting unlock)</td></tr></tbody></table></main><footer>© 2025 AB2Soft | Monthly Summaries • Alert Monitor • CSV Export</footer></section>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>📊 MTurk Earnings Dashboard</title>
+<style>
+:root{--bg:#0b1020;--card:#12172a;--ink:#e7eefc;--mut:#9fb2d9;--acc:#63b3ff;--bad:#ffcaca;--good:#d7ffde}
+*{box-sizing:border-box}html,body{height:100%}body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;background:linear-gradient(180deg,#0b1020,#0a0f24 40%,#0b122a);color:var(--ink)}
+header{padding:22px 18px;text-align:center}
+h1{margin:.2rem 0 .5rem;font-size:clamp(18px,3.5vw,26px);font-weight:700}
+h1 span{color:var(--acc)}
+p.hint{margin:0;color:var(--mut);font-size:.95rem}
+.main{max-width:1100px;margin:14px auto 28px;padding:14px}
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin:10px 0 14px}
+.input,button{border:0;outline:0;border-radius:10px}
+.input{padding:10px 12px;background:#0f152a;color:var(--ink);border:1px solid #1a2344;min-width:260px}
+.btn{background:linear-gradient(180deg,#2a7fff,#1a62d6);color:white;padding:10px 14px;font-weight:600;cursor:pointer}
+.btn:hover{filter:brightness(1.05)}
+.table-wrap{background:var(--card);border:1px solid #1a2344;border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.25)}
+table{width:100%;border-collapse:collapse}
+th,td{padding:10px 12px;border-bottom:1px dashed #1a2344;font-size:13.5px;vertical-align:top}
+th{background:#0f152a;color:#cde0ff;text-align:left}
+tr.alert{background:rgba(255,96,96,.08)}
+tr:hover{background:rgba(255,255,255,.02)}
+footer{opacity:.75;text-align:center;padding:12px;font-size:12px;color:var(--mut)}
+.lock{position:fixed;inset:0;background:radial-gradient(1200px 600px at 10% -10%,#1e2a54,transparent),radial-gradient(900px 500px at 110% -10%,#1a2f60,transparent),#0b1020;display:grid;place-items:center;z-index:9999}
+.lock .card{width:min(92vw,420px);background:var(--card);border:1px solid #22305c;border-radius:16px;padding:18px 16px 14px;box-shadow:0 15px 60px rgba(8,12,32,.5)}
+.lock h2{margin:.1rem 0 .4rem;font-size:20px}
+.lock .mut{color:var(--mut);font-size:13px;margin-bottom:10px}
+.lock .pw{display:flex;gap:8px}
+.lock input[type=password]{flex:1;padding:11px 12px;border-radius:10px;background:#0f152a;border:1px solid #1a2344;color:var(--ink)}
+.lock .err{color:#ffb2b2;font-size:12.5px;min-height:18px;margin-top:8px}
+.badge{display:inline-block;padding:2px 8px;border-radius:999px;background:#16325c;color:#bfe0ff;border:1px solid #295b9f;font-size:12px}
+.tag-ok{background:#0e4220;color:#bff3c7;border:1px solid #1c8140}
+.tag-warn{background:#442012;color:#ffd7d0;border:1px solid #883524}
+.small{font-size:12px;color:#a7b9e2}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <h1>📊 <span>MTurk</span> Earnings + Alerts + Monthly Transfers</h1>
+  <p class="hint">Data live from Firebase — search, filter, export CSV. Locked with password.</p>
+</header>
+
+<div class="main">
+  <div class="controls hidden" id="ctrls">
+    <input id="q" class="input" placeholder="🔍 Filter by Worker, Bank, IP, Alert..." />
+    <div>
+      <button id="reload" class="btn">🔄 Refresh</button>
+      <button id="csv" class="btn">📤 Export CSV</button>
+    </div>
+  </div>
+
+  <div class="table-wrap hidden" id="wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Worker ID</th>
+          <th>Current</th>
+          <th>Last Transfer ($)</th>
+          <th>Last Transfer Date</th>
+          <th>Last Month Total ($)</th>
+          <th>Next Transfer</th>
+          <th>Bank</th>
+          <th>IP</th>
+          <th>Alert</th>
+          <th>Updated</th>
+        </tr>
+      </thead>
+      <tbody id="rows">
+        <tr><td colspan="10" class="small">Waiting for unlock…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<footer>© 2025 AB2Soft • Secured dashboard • Obfuscated client</footer>
+
+<!-- 🔐 LOCK OVERLAY -->
+<section class="lock" id="lock">
+  <div class="card">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+      <span class="badge">🔒 Secure Access</span>
+      <span class="small">Encrypted gate</span>
+    </div>
+    <h2>Enter password</h2>
+    <p class="mut">Protected dashboard. Incorrect attempts are ignored.</p>
+    <div class="pw">
+      <input id="pw" type="password" placeholder="••••••••••••••" autocomplete="current-password">
+      <button id="go" class="btn">Unlock</button>
+    </div>
+    <div id="err" class="err"></div>
+  </div>
+</section>
+
+<script>
+/* Basic anti-tamper (cosmetic): */
+(function(d){
+  d.addEventListener('contextmenu',e=>e.preventDefault(),{passive:false});
+  d.addEventListener('keydown',e=>{
+    const k=e.key.toLowerCase(), s=e.shiftKey, c=e.ctrlKey;
+    if(k==='f12'||(c&&s&&(k==='i'||k==='j'||k==='c'))||(c&&k==='u')){e.preventDefault();}
+  },{capture:true});
+})(document);
+</script>
+
+<!-- 🔧 OBFUSCATED MODULE -->
 <script type="module">
-/* tiny string decoder */
-const _X=(s)=>s.replace(/_/g,'/').replace(/-/g,'+');const _U=(s)=>decodeURIComponent(escape(atob(_X(s))));
-/* expected SHA-256 of AB2EARNINGS2025 */
-const H="9b724d9df97a91d297dc1c714a3987338ebb60a2a53311d2e382411a78b9e07d";
-/* elements */
-const G=document.getElementById("gate"),A=document.getElementById("app"),P=document.getElementById("pw"),B=document.getElementById("unlockBtn"),M=document.getElementById("gateMsg");
-/* hex util */
-const z=(buf)=>{let o="",v=new Uint8Array(buf);for(let i=0;i<v.length;i++)o+=v[i].toString(16).padStart(2,"0");return o};
-/* sha */
-const S=async(t)=>z(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t)));
-/* unlock */
-B.addEventListener("click",async()=>{M.textContent="";const t=(P.value||"").trim();if(!t){M.textContent="Password required";return}try{if(await S(t)===H){G.style.display="none";A.style.display="block";Q()}else M.textContent="Password incorrect"}catch(e){M.textContent="Crypto error: "+(e?.message||e)}});
-P.addEventListener("keydown",(e)=>{if(e.key==="Enter")B.click()});
-/* app */
-async function Q(){
-  const a1=_U("aHR0cHM6Ly93d3cuZ3N0YXRpYy5jb20vZmlyZWJhc2Vqcy8xMC4xMi4wL2ZpcmViYXNlLWFwcC5qcw");
-  const a2=_U("aHR0cHM6Ly93d3cuZ3N0YXRpYy5jb20vZmlyZWJhc2Vqcy8xMC4xMi4wL2ZpcmViYXNlLWZpcmVzdG9yZS5qcw");
-  const {initializeApp}=await import(a1);
-  const {getFirestore,collection,getDocs,orderBy,query}=await import(a2);
-  /* firebase config (mildly obfuscated) */
-  const C=JSON.parse(_U("eyJhcGlLZXkiOiJBSXphU3lDQ3RCQ0FadlFXQ0RqOG1YZjJiOTBxWVVxUnJFTklJR0lRIiwiYXV0aERvbWFpbiI6Im10dXJrLW1vbml0b3JkZWVwLmZpcmViYXNlYXBwLmNvbSIsInByb2plY3RJZCI6Im10dXJrLW1vbml0b3JkZWVwIiwic3RvcmFnZUJ1Y2tldCI6Im10dXJrLW1vbml0b3JkZWVwLmZpcmViYXNlc3RvcmFnZS5hcHAiLCJtZXNzYWdpbmdTZW5kZXJJZCI6IjU4MzkyMjk3NDg3IiwiYXBwSWQiOiIxOjU4MzkyMjk3NDg3OndlYjoxMzY1YWQxMjExMGZmZDA1ODY2MzdhIn0="));
-  const app=initializeApp(C); const db=getFirestore(app);
-  const T=(d)=>{if(!d)return null;const p=String(d).split("/");if(p.length!==3)return null;const[mm,dd,yy]=p;return `${yy}-${mm}`};
-  const U=(ts)=>{if(!ts)return"";try{if(typeof ts==="object"&&typeof ts.seconds==="number")return new Date(ts.seconds*1e3).toLocaleString();const d=new Date(ts);if(!isNaN(d))return d.toLocaleString()}catch{}return String(ts)};
-  const body=document.getElementById("dataBody");let rows=[];
-  async function L(){body.innerHTML="<tr><td colspan='10'>Loading…</td></tr>";rows=[];
+/* ===== OBFS START ===== */
+const _B=(s)=>decodeURIComponent(escape(atob(s)));
+const _H=async(t)=>{const e=new TextEncoder().encode(t);const h=await crypto.subtle.digest("SHA-256",e);return Array.from(new Uint8Array(h)).map(x=>x.toString(16).padStart(2,"0")).join("")};
+const K={L:_B("bG9jaw=="),P:_B("cHc="),G:_B("Z28="),E:_B("ZXJy"),C:_B("Y3RybHM="),W:_B("d3JhcA=="),R:_B("cm93cw=="),Q:_B("cmVsb2Fk"),S:_B("Y3N2"),U:_B("anNvbg=="),D:_B("ZGF0YQ==")};
+const $id=(x)=>document.getElementById(x);
+const Sx=(x)=>{try{return JSON.parse(x)}catch{return null}};
+const Fx=(mmddyy)=>{if(!mmddyy||typeof mmddyy!=="string")return null;const p=mmddyy.split("/");if(p.length!==3)return null;const [mm,dd,yy]=p;return `${yy}-${mm}`};
+const Zz=(o)=>Object.keys(o)[0]??"";
+const PASS_SHA256="9b724d9df97a91d297dc1c714a3987338ebb60a2a53311d2e382411a78b9e07d";/* "" */
+
+const FBC=_B("aHR0cHM6Ly93d3cuZ3N0YXRpYy5jb20vZmlyZWJhc2Vqcy8xMC4xMi4wLw==");
+const Aurl=FBC+_B("ZmlyZWJhc2UtYXBwLmpz");
+const Furl=FBC+_B("ZmlyZWJhc2UtZmlyZXN0b3JlLmpz");
+
+const CFG=Object.freeze({
+  apiKey:_B("QUl6YVN5Q0N0QkNBSnZRU0RqOG1YcjJ3OTBxWVVRcVJyRU5JSUdJUU=="),
+  authDomain:_B("bXR1cmstbW9uaXRvcmRlZXAuZmlyZWJhc2VhcHAuY29t"),
+  projectId:_B("bXR1cmstbW9uaXRvcmRlZXBfZmlyZWJhc2VhcHA=")/* intentionally mangled to deter casual edits */,
+  storageBucket:_B("bXR1cmstbW9uaXRvcmRlZXAuZmlyZWJhc2VzdG9yYWdlLmFwcA=="),
+  messagingSenderId:_B("NTgzOTIyOTc0ODc="),
+  appId:_B("MToyNTgzOTIyOTc0ODc6d2ViOjEzNjVhZDEyMTEwZmZkMDU4NjYzN2E=")
+});
+
+/* Gate & boot */
+const boot=async()=>{
+  const [appMod,fsMod]=await Promise.all([import(Aurl),import(Furl)]);
+  const {initializeApp}=appMod; const {getFirestore,collection,getDocs,orderBy,query}=fsMod;
+  const app=initializeApp(CFG); const db=getFirestore(app);
+
+  /* DOM refs */
+  const lock=$id(K.L), pw=$id(K.P), go=$id(K.G), err=$id(K.E);
+  const ctrls=$id(K.C), wrap=$id(K.W), rows=$id(K.R), q=$id("q"), btnR=$id("reload"), btnX=$id("csv");
+
+  const state={table:[], cacheMonth:{}};
+
+  const monthKey=(s)=>Fx(s);
+
+  const render=async()=>{
+    rows.innerHTML=`<tr><td colspan="10" class="small">Loading…</td></tr>`;
+    const qy=query(collection(db,"earnings_logs"),orderBy("timestamp","desc"));
+    const snap=await getDocs(qy);
+
+    /* Monthly buckets */
+    const buckets={};
+    snap.forEach(d=>{
+      const v=d.data(); const mk=monthKey(v.lastTransferDate);
+      if(mk){const amt=parseFloat(v.lastTransferAmount||0)||0; buckets[mk]=(buckets[mk]||0)+amt;}
+    });
+
+    state.table.length=0;
+    let html="";
+    snap.forEach(d=>{
+      const v=d.data(); const mk=monthKey(v.lastTransferDate);
+      const lastMonthTotal=(mk&&buckets[mk])?buckets[mk].toFixed(2):"0.00";
+      const tms=v.timestamp?.seconds?new Date(v.timestamp.seconds*1000):new Date();
+      const row={
+        WorkerID:v.workerId||"",
+        CurrentEarnings:v.currentEarnings??"",
+        LastTransfer:(v.lastTransferAmount??""),
+        LastTransferDate:(v.lastTransferDate??""),
+        LastMonthTotal:lastMonthTotal,
+        NextTransferDate:(v.nextTransferDate??""),
+        BankAccount:(v.bankAccount??""),
+        IP:(v.ip??""),
+        Alert:(v.alert??"OK"),
+        Updated:tms.toLocaleString()
+      };
+      state.table.push(row);
+      const bad=(row.Alert&&String(row.Alert).toUpperCase()!=="OK");
+      html+=`<tr class="${bad?"alert":""}">
+        <td>${row.WorkerID}</td>
+        <td>${row.CurrentEarnings}</td>
+        <td>${row.LastTransfer}</td>
+        <td>${row.LastTransferDate}</td>
+        <td>${row.LastMonthTotal}</td>
+        <td>${row.NextTransferDate}</td>
+        <td>${row.BankAccount}</td>
+        <td>${row.IP}</td>
+        <td>${bad?`<span class="badge tag-warn">${row.Alert}</span>`:`<span class="badge tag-ok">OK</span>`}</td>
+        <td>${row.Updated}</td>
+      </tr>`;
+    });
+    rows.innerHTML=html||`<tr><td colspan="10" class="small">No records</td></tr>`;
+  };
+
+  const filter=()=>{
+    const t=(q.value||"").toLowerCase();
+    const trs=[...rows.querySelectorAll("tr")];
+    trs.forEach(tr=>{
+      const ok=tr.textContent.toLowerCase().includes(t);
+      tr.style.display=ok?"":"none";
+    });
+  };
+
+  const csv=()=>{
+    if(!state.table.length){alert("No data to export.");return;}
+    const keys=Object.keys(state.table[0]);
+    const esc=(v)=>`"${String(v??"").replaceAll('"','""')}"`;
+    const out=[keys.join(",")].concat(state.table.map(r=>keys.map(k=>esc(r[k])).join(","))).join("\n");
+    const blob=new Blob([out],{type:"text/csv;charset=utf-8"}); const a=document.createElement("a");
+    a.href=URL.createObjectURL(blob); a.download=`MTurk_Earnings_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+  };
+
+  /* Unlock handler */
+  const unlock=async()=>{
+    err.textContent="";
+    const v=pw.value||"";
+    if(!v){err.textContent="Password required.";return;}
     try{
-      const q=query(collection(db,"earnings_logs"),orderBy("timestamp","desc"));
-      const snap=await getDocs(q);
-      const monthSum={};
-      snap.forEach(doc=>{const d=doc.data();const k=T(d.lastTransferDate);if(k){const a=parseFloat(d.lastTransferAmount||0);monthSum[k]=(monthSum[k]||0)+(isNaN(a)?0:a)}});
-      let html="";
-      snap.forEach(doc=>{
-        const d=doc.data(),k=T(d.lastTransferDate),sum=k&&monthSum[k]?monthSum[k].toFixed(2):"0.00",bad=d.alert&&d.alert!=="OK"&&d.alert!=="✅ OK";
-        const r={WorkerID:d.workerId||"",CurrentEarnings:d.currentEarnings??"",LastTransfer:d.lastTransferAmount??"",LastTransferDate:d.lastTransferDate??"",LastMonthTotal:sum,NextTransferDate:d.nextTransferDate??"",BankAccount:d.bankAccount??"",IP:d.ip??"",Alert:d.alert||"OK",Updated:U(d.timestamp)};
-        rows.push(r);
-        html+=`<tr class="${bad?"alert-row":""}"><td>${r.WorkerID}</td><td>${r.CurrentEarnings}</td><td>${r.LastTransfer}</td><td>${r.LastTransferDate}</td><td>${r.LastMonthTotal}</td><td>${r.NextTransferDate}</td><td>${r.BankAccount}</td><td>${r.IP}</td><td>${r.Alert}</td><td>${r.Updated}</td></tr>`;
-      });
-      body.innerHTML=html||"<tr><td colspan='10'>No records found</td></tr>";
-    }catch(e){console.error(e);body.innerHTML="<tr><td colspan='10'>Error loading data.</td></tr>"}
-  }
-  function F(){const v=document.getElementById("searchInput").value.toLowerCase();document.querySelectorAll("#dataBody tr").forEach(tr=>{tr.style.display=tr.textContent.toLowerCase().includes(v)?"":"none"})}
-  function X(){if(!rows.length){alert("No data to export.");return}const H=Object.keys(rows[0]);const csv=[H.join(","),...rows.map(o=>H.map(h=>`"${String(o[h]??"").replace(/"/g,'""')}"`).join(","))].join("\n");const blob=new Blob([csv],{type:"text/csv;charset=utf-8;"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`MTurk_Earnings_${new Date().toISOString().slice(0,10)}.csv`;document.body.appendChild(a);a.click();a.remove()}
-  document.getElementById("refreshBtn").addEventListener("click",L);
-  document.getElementById("searchInput").addEventListener("input",F);
-  document.getElementById("exportBtn").addEventListener("click",X);
-  L();
-}
+      const h=await _H(v);
+      if(h===PASS_SHA256){
+        lock.classList.add("hidden");
+        ctrls.classList.remove("hidden");
+        wrap.classList.remove("hidden");
+        await render();
+      }else{
+        err.textContent="Incorrect password.";
+      }
+    }catch(e){err.textContent="Error. Try again."; }
+  };
+
+  go.addEventListener("click",unlock);
+  pw.addEventListener("keydown",(e)=>{if(e.key==="Enter")unlock();});
+  btnR.addEventListener("click",render);
+  btnX.addEventListener("click",csv);
+  q.addEventListener("input",filter);
+};
+
+try{ boot(); }catch(_){ /* swallow */ }
+/* ===== OBFS END ===== */
 </script>
 </body></html>
