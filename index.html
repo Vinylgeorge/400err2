@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>📊 MTurk Earnings + Alerts Dashboard</title>
+<title>📊 MTurk Earnings + Monthly Transfers + Alerts</title>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getFirestore, collection, getDocs, orderBy, query } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -20,28 +20,52 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
-
   let tableData = [];
+
+  // 🧮 Helper: Convert "09/09/25" to month key
+  function getMonthKey(dateStr) {
+    if (!dateStr) return null;
+    const [mm, dd, yy] = dateStr.split("/");
+    return `${yy}-${mm}`; // e.g., "25-09"
+  }
 
   // 📥 Load Firestore Data
   async function loadData() {
     const tableBody = document.getElementById("dataBody");
-    tableBody.innerHTML = "<tr><td colspan='9'>Loading...</td></tr>";
+    tableBody.innerHTML = "<tr><td colspan='10'>Loading...</td></tr>";
     tableData = [];
 
     try {
       const q = query(collection(db, "earnings_logs"), orderBy("timestamp", "desc"));
       const snapshot = await getDocs(q);
-      let html = "";
+
+      // Group by month to find totals
+      const monthlyTransfers = {};
 
       snapshot.forEach(doc => {
         const d = doc.data();
+        const key = getMonthKey(d.lastTransferDate);
+        if (key) {
+          if (!monthlyTransfers[key]) monthlyTransfers[key] = 0;
+          const amount = parseFloat(d.lastTransferAmount || 0);
+          monthlyTransfers[key] += isNaN(amount) ? 0 : amount;
+        }
+      });
+
+      // Render rows
+      let html = "";
+      snapshot.forEach(doc => {
+        const d = doc.data();
         const isAlert = d.alert && d.alert !== "OK";
+        const monthKey = getMonthKey(d.lastTransferDate);
+        const lastMonthTotal = monthKey ? monthlyTransfers[monthKey].toFixed(2) : "0.00";
+
         const row = {
           WorkerID: d.workerId || "",
           CurrentEarnings: d.currentEarnings || "",
           LastTransfer: d.lastTransferAmount || "",
           LastTransferDate: d.lastTransferDate || "",
+          LastMonthTotal: lastMonthTotal,
           NextTransferDate: d.nextTransferDate || "",
           BankAccount: d.bankAccount || "",
           IP: d.ip || "",
@@ -56,6 +80,7 @@
             <td>${row.CurrentEarnings}</td>
             <td>${row.LastTransfer}</td>
             <td>${row.LastTransferDate}</td>
+            <td>${row.LastMonthTotal}</td>
             <td>${row.NextTransferDate}</td>
             <td>${row.BankAccount}</td>
             <td>${row.IP}</td>
@@ -65,10 +90,10 @@
         `;
       });
 
-      tableBody.innerHTML = html || "<tr><td colspan='9'>No records found</td></tr>";
+      tableBody.innerHTML = html || "<tr><td colspan='10'>No records found</td></tr>";
     } catch (err) {
       console.error("Error fetching data:", err);
-      tableBody.innerHTML = "<tr><td colspan='9'>Error loading data.</td></tr>";
+      tableBody.innerHTML = "<tr><td colspan='10'>Error loading data.</td></tr>";
     }
   }
 
@@ -194,13 +219,13 @@
 
 <body>
   <header>
-    <h1>📊 MTurk Earnings + Alerts Dashboard</h1>
-    <p>Data from Firebase (Auto-updated from Violentmonkey Script)</p>
+    <h1>📊 MTurk Earnings + Alerts + Monthly Transfers</h1>
+    <p>Auto-synced from Firebase — grouped by transfer month</p>
   </header>
 
   <main>
     <div class="controls">
-      <input type="text" id="searchInput" placeholder="🔍 Filter by worker ID, bank, or alert...">
+      <input type="text" id="searchInput" placeholder="🔍 Filter by worker, bank, or alert...">
       <div>
         <button id="refreshBtn">🔄 Refresh</button>
         <button id="exportBtn">📤 Export CSV</button>
@@ -214,6 +239,7 @@
           <th>Current Earnings</th>
           <th>Last Transfer ($)</th>
           <th>Last Transfer Date</th>
+          <th>Last Month Transfer ($)</th>
           <th>Next Transfer Date</th>
           <th>Bank</th>
           <th>IP</th>
@@ -222,13 +248,13 @@
         </tr>
       </thead>
       <tbody id="dataBody">
-        <tr><td colspan="9">Loading...</td></tr>
+        <tr><td colspan="10">Loading...</td></tr>
       </tbody>
     </table>
   </main>
 
   <footer>
-    © 2025 AB2Soft | Live Firebase Sync | CSV Export Supported
+    © 2025 AB2Soft | Monthly Summaries + Alert Monitor + CSV Export
   </footer>
 </body>
 </html>
