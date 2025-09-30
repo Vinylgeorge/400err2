@@ -5,27 +5,95 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>🔒 MTurk Earnings — Protected Viewer</title>
   <style>
-    body { font-family: Inter, Roboto, Arial, sans-serif; background: #f4f6f8; color: #111; text-align: center; padding: 40px; }
+    body {
+      font-family: Inter, Roboto, Arial, sans-serif;
+      background: #f4f6f8;
+      color: #111;
+      text-align: center;
+      padding: 40px;
+    }
+    h2 {
+      margin-top: 0;
+    }
     .hidden { display: none; }
-    #protected { max-width: 1000px; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 3px 10px rgba(0,0,0,0.1); padding: 20px; }
-    table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-    th { background: #111827; color: #fff; }
-    button { padding: 8px 16px; background: #111827; color: #fff; border: none; border-radius: 6px; cursor: pointer; margin-top: 10px; }
-    #status { margin-top: 10px; font-weight: 600; }
-    #passwordBox { background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: inline-block; }
+    #passwordBox {
+      background: #fff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+      display: inline-block;
+      margin-bottom: 50px;
+    }
+    #passInput {
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      width: 200px;
+      text-align: center;
+    }
+    #unlockBtn {
+      padding: 10px 20px;
+      background: #111827;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    #protected {
+      max-width: 1100px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+      padding: 20px 30px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      font-size: 14px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background: #111827;
+      color: #fff;
+    }
+    button {
+      padding: 8px 16px;
+      background: #111827;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 15px;
+    }
+    #status {
+      margin-top: 10px;
+      font-weight: 600;
+    }
+    #loadStatus {
+      margin-top: 10px;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
+  <!-- 🔐 Password Section -->
   <div id="passwordBox">
     <h2>🔒 Secure Access</h2>
-    <p>Enter password</p>
+    <p>Enter password to view dashboard</p>
     <input type="password" id="passInput" placeholder="Enter password" />
     <br><br>
     <button id="unlockBtn">Unlock</button>
     <p id="status"></p>
   </div>
 
+  <!-- 📊 Dashboard Section -->
   <div id="protected" class="hidden">
     <h2>📊 MTurk Earnings Dashboard</h2>
     <table>
@@ -48,11 +116,11 @@
     <p id="loadStatus">Loading data...</p>
   </div>
 
+  <!-- 🔧 Firebase Logic -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
     import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    // ✅ Firebase Config
     const firebaseConfig = {
       apiKey: "AIzaSyCCtBCAJvQCDj8MXb2w90qYUqRrENIIGIQ",
       authDomain: "mturk-monitordeep.firebaseapp.com",
@@ -65,7 +133,7 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    const encPass = "QUIyRUFSTklOR1MyMDI1"; // 🔐 Encrypted "AB2EARNINGS2025"
+    const encPass = "QUIyRUFSTklOR1MyMDI1"; // base64 for AB2EARNINGS2025
     const decodePass = atob(encPass);
 
     const passBox = document.getElementById("passwordBox");
