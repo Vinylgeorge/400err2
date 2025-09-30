@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Secure Earnings Dashboard</title>
 <style>
-body{font-family:system-ui,sans-serif;background:#f5f7fa;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;color:#333;margin:0}
+body{font-family:system-ui,sans-serif;background:#f5f7fa;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0;color:#333}
 #login,#protected{background:#fff;padding:30px;border-radius:12px;box-shadow:0 0 15px rgba(0,0,0,.1);text-align:center}
 #protected{display:none}
 input{padding:10px 14px;border-radius:8px;border:1px solid #ccc;margin-top:10px;width:240px;text-align:center}
@@ -15,36 +15,42 @@ button{margin-top:10px;padding:10px 20px;border:none;border-radius:8px;backgroun
 <body>
 <div id="login">
 <h2>🔒 Secure Access</h2>
-<input id="pwd" type="password" placeholder="Enter password">
-<br><button id="checkBtn">Unlock</button>
-<p id="msg"></p>
+<input id="p" type="password" placeholder="Enter password">
+<br><button id="b">Unlock</button>
+<p id="m"></p>
 </div>
-<div id="protected">
+<div id="x">
 <h2>✅ Access Granted</h2>
 <p>Welcome to the protected earnings dashboard.</p>
-<!-- Place your Firebase earnings viewer or content here -->
 </div>
 
 <script>
 (function(){
 "use strict";
-const _0xabc1=["bG9naW4=","cHdk","dmFsdWU=","dHJpbQ==","ZGVjb2RlZA==","YWJv","cHJvdGVjdGVk","ZGlzcGxheQ==","bm9uZQ==","YmxvY2s=","bXNn","aW5uZXJUZXh0","5Y+N5Zyo6L6T5YWl6Zmk5LqG","Q0lEQ2hlY2s=","Q0lEUGFzc3dvcmQ=","QUIyRUFSTklOR1MyMDI1","YXRvYg=="];
-(function(_0x80dc6b,_0xabc19b){const _0x5f091e=function(_0x50d490){while(--_0x50d490){_0x80dc6b["push"](_0x80dc6b["shift"]());}};_0x5f091e(++_0xabc19b);}(_0xabc1,0x7d));
-const _0x5f09=function(_0x80dc6b,_0xabc19b){_0x80dc6b=_0x80dc6b-0x0;let _0x5f091e=_0xabc1[_0x80dc6b];if(_0x5f09["decoded"]===undefined){(function(){const _0x219ce6=typeof window!=="undefined"?window:typeof process==="object"&&typeof require==="function"&&typeof global==="object"?global:this;const _0x34dbf7="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";_0x219ce6["atob"]||(_0x219ce6["atob"]=function(_0x4e96c0){let _0x2dc18d=String(_0x4e96c0)["replace"](/=+$/,"");let _0x179e7b="";for(let _0x3e0a17=0x0,_0x3263cf,_0x357a49,_0x56c6ee=0x0;_0x357a49=_0x2dc18d["charAt"](_0x56c6ee++);~_0x357a49&&(_0x3263cf=_0x3e0a17%0x4?_0x3263cf*0x40+_0x357a49:_0x357a49,_0x3e0a17++%0x4)?_0x179e7b+=String["fromCharCode"](0xff&_0x3263cf>>(-2*_0x3e0a17&0x6)):0x0){_0x357a49=_0x34dbf7["indexOf"](_0x357a49);}return _0x179e7b;});}());_0x5f09["base64DecodeUnicode"]=function(_0x50d490){const _0x80dc6b=atob(_0x50d490);let _0xabc19b="";for(let _0x5f091e=0x0;_0x5f091e<_0x80dc6b["length"];_0x5f091e++){_0xabc19b+="%"+("00"+_0x80dc6b["charCodeAt"](_0x5f091e)["toString"](0x10))["slice"](-2);}return decodeURIComponent(_0xabc19b);};}_0x5f09["decoded"]=_0x5f09["base64DecodeUnicode"];return _0x5f09["decoded"](_0x5f091e);};
-const keyEncoded=_0x5f09("0xf"),decodeFunc=_0x5f09("0x10");
-function verify(){
-try{
-const userInput=document.getElementById(atob(_0x5f09("0x1")))[atob(_0x5f09("0x2"))][atob(_0x5f09("0x3"))]();
-const truePass=window[atob(_0x5f09("0x10"))](keyEncoded);
-if(userInput===truePass){
-document.getElementById(atob(_0x5f09("0x0")))[atob(_0x5f09("0x6"))]=atob(_0x5f09("0x8"));
-document.getElementById(atob(_0x5f09("0x5")))[atob(_0x5f09("0x6"))]=atob(_0x5f09("0x9"));
-}else{
-document.getElementById(atob(_0x5f09("0xa")))[atob(_0x5f09("0xb"))]="❌ Wrong password!";
-}}
-catch(_0x2b3cb0){console.error("Error:",_0x2b3cb0);}}
-document.getElementById("checkBtn").addEventListener("click",verify);
-document.getElementById("pwd").addEventListener("keypress",function(_0x24f9fd){if(_0x24f9fd.key==="Enter")verify();});
+const _e=atob("QUIyRUFSTklOR1MyMDI1"); // encoded password
+
+function _unlock(){
+  try{
+    const i=document.getElementById("p");
+    const entered=i?i.value.trim():"";
+    if(entered===_e){
+      document.getElementById("login").style.display="none";
+      document.getElementById("x").style.display="block";
+    }else{
+      const msg=document.getElementById("m");
+      if(msg) msg.textContent="❌ Wrong password!";
+    }
+  }catch(err){
+    console.error("Unlock error:",err);
+  }
+}
+
+// randomize var names for obfuscation
+const k1="b",k2="p";
+document.getElementById(k1).addEventListener("click",_unlock);
+document.getElementById(k2).addEventListener("keypress",ev=>{
+  if(ev.key==="Enter")_unlock();
+});
 })();
 </script>
 </body>
