@@ -3,108 +3,162 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>🔒 MTurk Earnings — Secure Dashboard</title>
+<title>🔒 MTurk Earnings + Monthly Transfers + Alerts</title>
+
 <style>
   body {
-    font-family: Inter, Roboto, Arial, sans-serif;
-    background: #f4f6f8;
+    font-family: "Inter", Roboto, Arial, sans-serif;
+    background: #f8fafc;
+    margin: 0;
+    padding: 20px;
     color: #111;
+  }
+  header {
     text-align: center;
-    padding: 40px;
+    background: linear-gradient(135deg, #2563eb, #1e3a8a);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
   }
-  .hidden { display: none; }
-  #passwordBox {
-    background: #fff;
-    padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-    display: inline-block;
-    margin-bottom: 40px;
+  main { margin-top: 20px; }
+  .controls {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
   }
-  input[type="password"] {
-    padding: 10px;
-    border: 1px solid #ccc;
+  input[type="text"], input[type="password"] {
+    padding: 8px 10px;
+    font-size: 14px;
+    border: 1px solid #ddd;
     border-radius: 6px;
-    width: 220px;
-    text-align: center;
   }
+  #passInput { width: 220px; text-align: center; }
   button {
-    background: #111827;
-    color: #fff;
+    background: #2563eb;
     border: none;
+    color: white;
+    padding: 8px 14px;
     border-radius: 6px;
-    padding: 8px 16px;
     cursor: pointer;
+    margin-left: 8px;
   }
-  #protected {
-    max-width: 1100px;
-    margin: 0 auto;
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-    padding: 20px 30px;
-    text-align: left;
-  }
+  button:hover { background: #1d4ed8; }
   table {
     width: 100%;
     border-collapse: collapse;
-    margin-top: 20px;
-    font-size: 14px;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.05);
   }
   th, td {
-    border: 1px solid #ddd;
-    padding: 8px;
-    text-align: center;
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    text-align: left;
+    font-size: 14px;
   }
-  th {
-    background: #111827;
-    color: #fff;
+  th { background: #f1f5f9; }
+  tr.alert-row {
+    background: #fee2e2 !important;
+    color: #b91c1c;
+    font-weight: 600;
   }
-  #loadStatus {
-    margin-top: 10px;
-    font-style: italic;
+  tr:hover { background: #f9fafb; }
+  footer {
     text-align: center;
+    margin-top: 15px;
+    font-size: 12px;
+    color: #666;
+  }
+  .hidden { display: none; }
+  #passwordBox {
+    text-align: center;
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    max-width: 400px;
+    margin: 80px auto;
   }
 </style>
 </head>
+
 <body>
-  <!-- 🔒 Password Gate -->
+  <!-- 🔐 Password Gate -->
   <div id="passwordBox">
     <h2>🔒 Secure Access</h2>
-    <p>Enter password to view earnings dashboard</p>
+    <p>Enter password to view the dashboard</p>
     <input type="password" id="passInput" placeholder="Enter password" /><br><br>
     <button id="unlockBtn">Unlock</button>
     <p id="status"></p>
   </div>
 
-  <!-- 📊 Dashboard -->
-  <div id="protected" class="hidden">
-    <h2 style="text-align:center;">📊 MTurk Earnings Dashboard</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Worker ID</th>
-          <th>User</th>
-          <th>IP</th>
-          <th>Current Earnings</th>
-          <th>Bank</th>
-          <th>Next Transfer</th>
-          <th>Last Month Transfer</th>
-          <th>Alert</th>
-          <th>Timestamp</th>
-        </tr>
-      </thead>
-      <tbody id="earnBody"></tbody>
-    </table>
-    <div style="text-align:center;">
-      <button id="csvExport">⬇️ Export to CSV</button>
-      <p id="loadStatus">Loading data...</p>
-    </div>
+  <!-- 📊 Protected Dashboard -->
+  <div id="dashboard" class="hidden">
+    <header>
+      <h1>📊 MTurk Earnings + Alerts + Monthly Transfers</h1>
+      <p>Auto-synced from Firebase — grouped by transfer month</p>
+    </header>
+
+    <main>
+      <div class="controls">
+        <input type="text" id="searchInput" placeholder="🔍 Filter by worker, bank, or alert...">
+        <div>
+          <button id="refreshBtn">🔄 Refresh</button>
+          <button id="exportBtn">📤 Export CSV</button>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Worker ID</th>
+            <th>Current Earnings</th>
+            <th>Last Transfer ($)</th>
+            <th>Last Transfer Date</th>
+            <th>Last Month Transfer ($)</th>
+            <th>Next Transfer Date</th>
+            <th>Bank</th>
+            <th>IP</th>
+            <th>Alert</th>
+            <th>Updated</th>
+          </tr>
+        </thead>
+        <tbody id="dataBody">
+          <tr><td colspan="10">Loading...</td></tr>
+        </tbody>
+      </table>
+    </main>
+
+    <footer>
+      © 2025 AB2Soft | Monthly Summaries + Alert Monitor + CSV Export
+    </footer>
   </div>
 
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-  import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, getDocs, orderBy, query } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // 🔐 Encrypted password (base64 for "AB2EARNINGS2025")
+  const encPass = "QUIyRUFSTklOR1MyMDI1";
+  const decodePass = atob(encPass);
+
+  const passBox = document.getElementById("passwordBox");
+  const dashboard = document.getElementById("dashboard");
+  const statusEl = document.getElementById("status");
+
+  document.getElementById("unlockBtn").onclick = () => {
+    const inputVal = document.getElementById("passInput").value.trim();
+    if (inputVal === decodePass) {
+      passBox.classList.add("hidden");
+      dashboard.classList.remove("hidden");
+      loadData();
+    } else {
+      statusEl.textContent = "❌ Wrong password";
+      statusEl.style.color = "red";
+    }
+  };
 
   // 🔧 Firebase Config
   const firebaseConfig = {
@@ -118,75 +172,121 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+  let tableData = [];
 
-  // 🔐 Password (encrypted)
-  const encPass = "QUIyRUFSTklOR1MyMDI1"; // AB2EARNINGS2025
-  const decodePass = atob(encPass);
+  // 🧮 Helper: Convert "09/09/25" to month key
+  function getMonthKey(dateStr) {
+    if (!dateStr) return null;
+    const [mm, dd, yy] = dateStr.split("/");
+    return `${yy}-${mm}`; // e.g., "25-09"
+  }
 
-  const passBox = document.getElementById("passwordBox");
-  const protectedDiv = document.getElementById("protected");
-  const passInput = document.getElementById("passInput");
-  const statusEl = document.getElementById("status");
-
-  document.getElementById("unlockBtn").onclick = () => {
-    if (passInput.value === decodePass) {
-      passBox.classList.add("hidden");
-      protectedDiv.classList.remove("hidden");
-      loadData();
-      setInterval(loadData, 60000); // 🔁 Auto-refresh every 60 seconds
-    } else {
-      statusEl.textContent = "❌ Wrong password";
-      statusEl.style.color = "red";
-    }
-  };
-
+  // 📥 Load Firestore Data
   async function loadData() {
-    const loadStatus = document.getElementById("loadStatus");
-    const tbody = document.getElementById("earnBody");
-    tbody.innerHTML = "";
-    loadStatus.textContent = "⏳ Loading data...";
+    const tableBody = document.getElementById("dataBody");
+    tableBody.innerHTML = "<tr><td colspan='10'>Loading...</td></tr>";
+    tableData = [];
+
     try {
-      const snapshot = await getDocs(collection(db, "earnings_logs"));
-      if (snapshot.empty) {
-        loadStatus.textContent = "⚠️ No data found in Firestore.";
-        return;
-      }
+      const q = query(collection(db, "earnings_logs"), orderBy("timestamp", "desc"));
+      const snapshot = await getDocs(q);
+
+      const monthlyTransfers = {};
       snapshot.forEach(doc => {
         const d = doc.data();
-        const ts = d.timestamp?.toDate
-          ? d.timestamp.toDate().toLocaleString()
-          : (d.timestamp || "");
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${d.workerId || ""}</td>
-          <td>${d.user || ""}</td>
-          <td>${d.ip || ""}</td>
-          <td>${d.currentEarnings || ""}</td>
-          <td>${d.bankAccount || ""}</td>
-          <td>${d.nextTransferDate || ""}</td>
-          <td>${d.lastMonthTransfer || ""}</td>
-          <td style="color:${d.alert ? 'red':'green'}">${d.alert || "✅ OK"}</td>
-          <td>${ts}</td>`;
-        tbody.appendChild(tr);
+        const key = getMonthKey(d.lastTransferDate);
+        if (key) {
+          if (!monthlyTransfers[key]) monthlyTransfers[key] = 0;
+          const amount = parseFloat(d.lastTransferAmount || 0);
+          monthlyTransfers[key] += isNaN(amount) ? 0 : amount;
+        }
       });
-      loadStatus.textContent = "✅ Data loaded successfully (auto-refresh every 1 min).";
-      loadStatus.style.color = "green";
+
+      let html = "";
+      snapshot.forEach(doc => {
+        const d = doc.data();
+        const isAlert = d.alert && d.alert !== "OK";
+        const monthKey = getMonthKey(d.lastTransferDate);
+        const lastMonthTotal = monthKey ? monthlyTransfers[monthKey].toFixed(2) : "0.00";
+
+        const row = {
+          WorkerID: d.workerId || "",
+          CurrentEarnings: d.currentEarnings || "",
+          LastTransfer: d.lastTransferAmount || "",
+          LastTransferDate: d.lastTransferDate || "",
+          LastMonthTotal: lastMonthTotal,
+          NextTransferDate: d.nextTransferDate || "",
+          BankAccount: d.bankAccount || "",
+          IP: d.ip || "",
+          Alert: d.alert || "OK",
+          Updated: new Date(d.timestamp?.seconds * 1000 || Date.now()).toLocaleString()
+        };
+        tableData.push(row);
+
+        html += `
+          <tr class="${isAlert ? "alert-row" : ""}">
+            <td>${row.WorkerID}</td>
+            <td>${row.CurrentEarnings}</td>
+            <td>${row.LastTransfer}</td>
+            <td>${row.LastTransferDate}</td>
+            <td>${row.LastMonthTotal}</td>
+            <td>${row.NextTransferDate}</td>
+            <td>${row.BankAccount}</td>
+            <td>${row.IP}</td>
+            <td>${row.Alert}</td>
+            <td>${row.Updated}</td>
+          </tr>
+        `;
+      });
+
+      tableBody.innerHTML = html || "<tr><td colspan='10'>No records found</td></tr>";
     } catch (err) {
-      loadStatus.textContent = "❌ Firestore fetch error: " + err.message;
-      loadStatus.style.color = "red";
+      console.error("Error fetching data:", err);
+      tableBody.innerHTML = "<tr><td colspan='10'>Error loading data.</td></tr>";
     }
   }
 
-  document.getElementById("csvExport").onclick = () => {
-    const rows = [...document.querySelectorAll("table tr")]
-      .map(r => [...r.children].map(c => `"${c.innerText}"`).join(","))
-      .join("\n");
-    const blob = new Blob([rows], { type: "text/csv" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "earnings_logs.csv";
-    a.click();
-  };
+  // 🔍 Filter Table
+  function filterTable() {
+    const filter = document.getElementById("searchInput").value.toLowerCase();
+    const rows = document.querySelectorAll("#dataBody tr");
+    rows.forEach(row => {
+      const text = row.textContent.toLowerCase();
+      row.style.display = text.includes(filter) ? "" : "none";
+    });
+  }
+
+  // 📤 Export Table to CSV
+  function exportToCSV() {
+    if (tableData.length === 0) {
+      alert("No data to export.");
+      return;
+    }
+
+    const csvRows = [];
+    const headers = Object.keys(tableData[0]);
+    csvRows.push(headers.join(","));
+    for (const row of tableData) {
+      const values = headers.map(h => `"${(row[h] || "").toString().replace(/"/g, '""')}"`);
+      csvRows.push(values.join(","));
+    }
+
+    const csvContent = csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `MTurk_Earnings_${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  // 🕒 Initialize
+  window.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("refreshBtn").addEventListener("click", loadData);
+    document.getElementById("searchInput").addEventListener("keyup", filterTable);
+    document.getElementById("exportBtn").addEventListener("click", exportToCSV);
+  });
 </script>
 </body>
 </html>
