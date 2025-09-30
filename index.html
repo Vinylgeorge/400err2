@@ -1,68 +1,189 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>MTurk Earnings Monitor – Live Dashboard</title>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📊 MTurk Earnings Dashboard</title>
+<script type="module">
+  // ---------- Firebase SDK Imports ----------
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import {
+    getFirestore,
+    collection,
+    getDocs,
+    query,
+    orderBy
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyCCtBCAJvQCDj8MXb2w90qYUqRrENIIGIQ",
-      authDomain: "mturk-monitordeep.firebaseapp.com",
-      projectId: "mturk-monitordeep",
-      storageBucket: "mturk-monitordeep.firebasestorage.app",
-      messagingSenderId: "58392297487",
-      appId: "1:58392297487:web:1365ad12110ffd0586637a"
-    };
+  // ---------- Firebase Config ----------
+  const firebaseConfig = {
+    apiKey: "AIzaSyCCtBCAJvQCDj8MXb2w90qYUqRrENIIGIQ",
+    authDomain: "mturk-monitordeep.firebaseapp.com",
+    projectId: "mturk-monitordeep",
+    storageBucket: "mturk-monitordeep.firebasestorage.app",
+    messagingSenderId: "58392297487",
+    appId: "1:58392297487:web:1365ad12110ffd0586637a"
+  };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const table = document.getElementById("data");
+  // ---------- Initialize Firebase ----------
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
 
-    onSnapshot(collection(db, "earnings_logs"), (snapshot) => {
-      table.innerHTML = `
-        <tr>
-          <th>User</th>
-          <th>Worker ID</th>
-          <th>IP</th>
-          <th>Earnings</th>
-          <th>Bank</th>
-          <th>Next Transfer</th>
-          <th>Last Transfer</th>
-          <th>Updated</th>
-        </tr>
-      `;
+  // ---------- Fetch and Render Data ----------
+  async function loadData() {
+    const tableBody = document.getElementById("dataBody");
+    tableBody.innerHTML = "<tr><td colspan='8'>Loading...</td></tr>";
+
+    try {
+      const q = query(collection(db, "earnings_logs"), orderBy("timestamp", "desc"));
+      const snapshot = await getDocs(q);
+      let rows = "";
 
       snapshot.forEach((doc) => {
         const d = doc.data();
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td>${d.user || "Unknown"}</td>
-          <td>${d.workerId}</td>
-          <td>${d.ip}</td>
-          <td>${d.currentEarnings}</td>
-          <td>${d.bankAccount}</td>
-          <td>${d.nextTransferDate}</td>
-          <td>${d.lastTransferDate}</td>
-          <td>${new Date(d.timestamp).toLocaleString()}</td>
+        rows += `
+          <tr>
+            <td>${d.user || "Unknown"}</td>
+            <td>${d.workerId || ""}</td>
+            <td>${d.currentEarnings || ""}</td>
+            <td>${d.lastTransferAmount || ""}</td>
+            <td>${d.lastTransferDate || ""}</td>
+            <td>${d.nextTransferDate || ""}</td>
+            <td>${d.bankAccount || ""}</td>
+            <td>${d.ip || ""}</td>
+            <td>${new Date(d.timestamp).toLocaleString()}</td>
+          </tr>
         `;
-        table.appendChild(row);
       });
-    });
-  </script>
 
-  <style>
-    body { font-family: Arial; background: #f9fafb; padding: 20px; color:#111; }
-    table { border-collapse: collapse; width: 100%; background: #fff; border-radius:8px; overflow:hidden; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align:left; }
-    th { background: #111; color:#fff; }
-    tr:hover { background: #f3f4f6; }
-    h1 { margin-bottom: 16px; }
-  </style>
+      tableBody.innerHTML = rows || "<tr><td colspan='8'>No records found.</td></tr>";
+    } catch (err) {
+      console.error("Error loading data:", err);
+      tableBody.innerHTML = "<tr><td colspan='8'>Error loading data.</td></tr>";
+    }
+  }
+
+  // ---------- Search Filter ----------
+  function filterTable() {
+    const filter = document.getElementById("searchInput").value.toLowerCase();
+    const rows = document.querySelectorAll("#dataBody tr");
+    rows.forEach(row => {
+      const text = row.textContent.toLowerCase();
+      row.style.display = text.includes(filter) ? "" : "none";
+    });
+  }
+
+  // ---------- Initialize ----------
+  window.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("refreshBtn").addEventListener("click", loadData);
+    document.getElementById("searchInput").addEventListener("keyup", filterTable);
+    loadData();
+  });
+</script>
+
+<style>
+  body {
+    font-family: "Inter", Roboto, Arial, sans-serif;
+    background: #f5f7fa;
+    color: #111;
+    margin: 0;
+    padding: 0;
+  }
+  header {
+    background: linear-gradient(135deg, #2563eb, #1e3a8a);
+    color: white;
+    padding: 20px;
+    text-align: center;
+  }
+  main {
+    padding: 20px;
+  }
+  .controls {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+  }
+  input[type="text"] {
+    padding: 8px 10px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    width: 250px;
+  }
+  button {
+    background: #2563eb;
+    border: none;
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  button:hover {
+    background: #1d4ed8;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  th, td {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    text-align: left;
+    font-size: 14px;
+  }
+  th {
+    background: #f0f4f8;
+  }
+  tr:hover {
+    background: #f9fafb;
+  }
+  footer {
+    text-align: center;
+    padding: 10px;
+    font-size: 12px;
+    color: #666;
+  }
+</style>
 </head>
+
 <body>
-  <h1>📊 MTurk Earnings – Live Firebase Dashboard</h1>
-  <table id="data"></table>
+  <header>
+    <h1>📊 MTurk Earnings Dashboard</h1>
+    <p>Live data from Firebase (mturk-monitordeep)</p>
+  </header>
+
+  <main>
+    <div class="controls">
+      <input type="text" id="searchInput" placeholder="🔍 Filter by name, ID, or date...">
+      <button id="refreshBtn">🔄 Refresh</button>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Worker ID</th>
+          <th>Current Earnings</th>
+          <th>Last Transfer ($)</th>
+          <th>Last Transfer Date</th>
+          <th>Next Transfer Date</th>
+          <th>Bank</th>
+          <th>IP</th>
+          <th>Last Updated</th>
+        </tr>
+      </thead>
+      <tbody id="dataBody">
+        <tr><td colspan="8">Loading data...</td></tr>
+      </tbody>
+    </table>
+  </main>
+
+  <footer>
+    © 2025 AB2Soft | Data auto-synced from MTurk Earnings Violentmonkey Script
+  </footer>
 </body>
 </html>
