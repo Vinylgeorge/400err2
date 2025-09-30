@@ -2,24 +2,50 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>🔒 AB2 Earnings Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Secure Earnings Dashboard</title>
 <style>
-  body{margin:0;font-family:Segoe UI,Roboto,Arial,sans-serif;background:#0a1117;color:#e8eefb;}
-  #protected{display:none;padding:20px;}
+body{font-family:system-ui,sans-serif;background:#f5f7fa;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;color:#333;margin:0}
+#login,#protected{background:#fff;padding:30px;border-radius:12px;box-shadow:0 0 15px rgba(0,0,0,.1);text-align:center}
+#protected{display:none}
+input{padding:10px 14px;border-radius:8px;border:1px solid #ccc;margin-top:10px;width:240px;text-align:center}
+button{margin-top:10px;padding:10px 20px;border:none;border-radius:8px;background:#0078d7;color:#fff;cursor:pointer}
 </style>
-
-<!-- Password gate (encrypted, 10-minute auto-lock) -->
-<script>
-eval(atob("KGFzeW5jIGZ1bmN0aW9uKCl7Y29uc3QgZT0ibHNhbHQ6bXR1cmstZWFybmluZ3N8Iix0PSJ8cGVwcGVyOjIwMjUtMTAiLG49IjFjOWRjYmQ0ZGMxZWUwYWYwMDU2NWU0ODZjNmViNjY2MWViN2YzNzdlNzI1MzExZmNiMTJlNDM1MjBhMjkzNjAiLHI9ImFiMl9wd19va192MSIsbz1hc3luYyB0PT5bLi4uYXdhaXQgY3J5cHRvLnN1YnRsZS5kaWdlc3QoIlNIQS0yNTYiLG5ldyBUZXh0RW5jb2RlcigpLmVuY29kZSh0KSldLmJ1ZmZlcjtjb25zdCBhPW5ldyBVaW50OEFycmF5KG8pO3JldHVybiBBcnJheS5mcm9tKGEpLm1hcChpPT5pLnRvU3RyaW5nKDE2KS5wYWRTdGFydCgyLCIwIikpLmpvaW4oIiIpO2lmKHNlc3Npb25TdG9yYWdlLmdldEl0ZW0ocik9PSIxIil7ZG9jdW1lbnQuZ2V0RWxlbWVudEJ5SWQoInByb3RlY3RlZCIpLnN0eWxlLmRpc3BsYXk9IiI7cmV0dXJufWNvbnN0IGk9ZG9jdW1lbnQuY3JlYXRlRWxlbWVudCgiZGl2Iik7aS5zdHlsZS5jc3NUZXh0PSJwb3NpdGlvbjpmaXhlZDtpbnNldDowO2JhY2tncm91bmQ6IzBiMTIyMDtkaXNwbGF5OmZsZXg7YWxpZ24taXRlbXM6Y2VudGVyO2p1c3RpZnktY29udGVudDpjZW50ZXI7ei1pbmRleDo5OTk5OTkiO2kubm5lcj1hdG9iKCI8ZGl2IHN0eWxlPVwid2lkdGg6bWluKDkyd3csNDIwcHgpO3BhZGRpbmc6MjJweCAxOHB4O2JhY2tncm91bmQ6IzEyMWEyYTtjb2xvcjojZThlZWZiO2JvcmRlci1yYWRpdXM6MTRweDtmb250LXdlaWdodDo2MDA7Ym9yZGVyOjFweCBzb2xpZCAjMWYyYTQ0O2ZvbnQ6MTRweC8xLjQgc3lzdGVtLXVpLCAtYXBwbGUtc3lzdGVtLCBTZWdvZSBVSSwgUm9ib3RvLCBBcmlhbDtcIj48ZGl2IHN0eWxlPVwiZm9udC1zaXplOjE4cHg7bWFyZ2luLWJvdHRvbToxMHB4O2ZvbnQtd2VpZ2h0OjYwMDtcIj5FbnRlciBBY2Nlc3MgUGFzc3dvcmQ8L2Rpdj48ZGl2IGlkPVwibXNnXCIgc3R5bGU9XCJjb2xvcjojOTViMGQ2O21hcmdpbjo2cHggMCAxMnB4O1wiPlRoaXMgcGFnZSBpcyBwcm90ZWN0ZWQuPC9kaXY+PGlucHV0IGlkPVwiaW5wXCIgdHlwZT1cInBhc3N3b3JkXCIgc3R5bGU9XCJ3aWR0aDoxMDAlO3BhZGRpbmc6MTBweCAxMnB4O2JvcmRlci1yYWRpdXM6MTBweDtiYWNrZ3JvdW5kOiMwZTE1MjY7Y29sb3I6I2U4ZWVmYjtib3JkZXI6MXB4IHNvbGlkICMyYTNhNWY7XCI+PGRpdiBzdHlsZT1cImRpc3BsYXk6ZmxleDtnYXA6OHB4O21hcmdpbi10b3A6MTJweDtcIj48YnV0dG9uIGlkPVwiYnRuXCIgc3R5bGU9XCJmbGV4OjE7cGFkZGluZzoxMHB4IDEycHg7Ym9yZGVyLXJhZGl1czoxMHB4O2JhY2tncm91bmQ6IzNhNjRmZjsgY29sb3I6I2ZmZjsgYm9yZGVyOm5vbmU7XCI+VW5sb2NrPC9idXR0b24+PC9kaXY+PC9kaXY+PC9kaXY+Iik7ZG9jdW1lbnQuYm9keS5hcHBlbmRDaGlsZChpKTtjb25zdCBjPWI9PmlucHV0P2RvY3VtZW50LnF1ZXJ5U2VsZWN0b3IoYik6IiI7Y29uc3QgZT0obj0+ZG9jdW1lbnQucXVlcnlTZWxlY3RvcihuKSksZD0oYi0+ZG9jdW1lbnQucXVlY3RvcihiKSksYT1lKCIjbXNnIiks cz1lKCIjaW5wIik7bGV0IGw9MDtmdW5jdGlvbiBwKCl7Y2xlYXJUaW1lb3V0KHcpO3c9c2V0VGltZW91dChmLDEwKX1sZXQgdz1udWxsO2Z1bmN0aW9uIGYoKXt3JiZjbGVhclRpbWVvdXQodyk7d2luZG93LmxvY2F0aW9uLnJlbG9hZCgpO31kb2N1bWVudC5hZGRFdmVudExpc3RlbmVyKCJtb3ZlIixwKTtkb2N1bWVudC5hZGRFdmVudExpc3RlbmVyKCJrZXlkb3duIixwKTtsZXQgaz1hc3luYyBlKCk9Pntjb25zdCBvPShzLnZhbHVlIHx8ICIiKS50cmltKCk7aWYoIW8pe2EudGV4dENvbnRlbnQ9IlBhc3N3b3JkIHJlcXVpcmVkLiI7YS5zdHlsZS5jb2xvcj0iI2ZmYjNiMyI7cmV0dXJufWwrKztjb25zdCBjPWF3YWl0IG8oZTtvK3QpO2lmKGM9PT1uKXt0cnkoc2Vzc2lvblN0b3JhZ2Uuc2V0SXRlbShyLDEpKXtkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgiaW5wdXQiKS52YWx1ZT0iIjtkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgiY29udGVudCIpLnN0eWxlLmRpc3BsYXk9IiI7aS5yZW1vdmUoKTtyZXR1cm59fWlmKGw+PTUpe2EudGV4dENvbnRlbnQ9IlRvbyBtYW55IGF0dGVtcHRzLiBSZWZyZXNoIHRoZSBwYWdlLiI7YS5zdHlsZS5jb2xvcj0iI2ZmOGU4ZSI7ZCgiI2J0biIpLmRpc2FibGVkPXRydWU7cy5kaXNhYmxlZD10cnVlO3JldHVybn1hLnRleHRDb250ZW50PSJJbmNvcnJlY3QgcGFzc3dvcmQuIEF0dGVtcHRzIGxlZnQ6ICIrKDUtcCksYS5zdHlsZS5jb2xvcj0iI2ZmYjNiMyI7cy52YWx1ZT0iIjtzLmZvY3VzKCl9ZCgiI2J0biIpLmFkZEV2ZW50TGlzdGVuZXIoImNsaWNrIixrKTtzLmFkZEV2ZW50TGlzdGVuZXIoImtleWRvd24iLGU9PntlLmtleT09PSJFbnRlciImJms oKX0pO30pKCk7"));
-</script>
 </head>
-
 <body>
-<div id="protected">
-  <h1>AB2 Earnings Dashboard</h1>
-  <p>✅ Secure content area — visible only after correct password entry.</p>
-  <p>You can place your Firebase display, earnings table, or export CSV button here.</p>
+<div id="login">
+<h2>🔒 Secure Access</h2>
+<input id="pwd" type="password" placeholder="Enter password">
+<br><button id="checkBtn">Unlock</button>
+<p id="msg"></p>
 </div>
+<div id="protected">
+<h2>✅ Access Granted</h2>
+<p>Welcome to the protected earnings dashboard.</p>
+<!-- Place your Firebase earnings viewer or content here -->
+</div>
+
+<script>
+(function(){
+"use strict";
+const _0xabc1=["bG9naW4=","cHdk","dmFsdWU=","dHJpbQ==","ZGVjb2RlZA==","YWJv","cHJvdGVjdGVk","ZGlzcGxheQ==","bm9uZQ==","YmxvY2s=","bXNn","aW5uZXJUZXh0","5Y+N5Zyo6L6T5YWl6Zmk5LqG","Q0lEQ2hlY2s=","Q0lEUGFzc3dvcmQ=","QUIyRUFSTklOR1MyMDI1","YXRvYg=="];
+(function(_0x80dc6b,_0xabc19b){const _0x5f091e=function(_0x50d490){while(--_0x50d490){_0x80dc6b["push"](_0x80dc6b["shift"]());}};_0x5f091e(++_0xabc19b);}(_0xabc1,0x7d));
+const _0x5f09=function(_0x80dc6b,_0xabc19b){_0x80dc6b=_0x80dc6b-0x0;let _0x5f091e=_0xabc1[_0x80dc6b];if(_0x5f09["decoded"]===undefined){(function(){const _0x219ce6=typeof window!=="undefined"?window:typeof process==="object"&&typeof require==="function"&&typeof global==="object"?global:this;const _0x34dbf7="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";_0x219ce6["atob"]||(_0x219ce6["atob"]=function(_0x4e96c0){let _0x2dc18d=String(_0x4e96c0)["replace"](/=+$/,"");let _0x179e7b="";for(let _0x3e0a17=0x0,_0x3263cf,_0x357a49,_0x56c6ee=0x0;_0x357a49=_0x2dc18d["charAt"](_0x56c6ee++);~_0x357a49&&(_0x3263cf=_0x3e0a17%0x4?_0x3263cf*0x40+_0x357a49:_0x357a49,_0x3e0a17++%0x4)?_0x179e7b+=String["fromCharCode"](0xff&_0x3263cf>>(-2*_0x3e0a17&0x6)):0x0){_0x357a49=_0x34dbf7["indexOf"](_0x357a49);}return _0x179e7b;});}());_0x5f09["base64DecodeUnicode"]=function(_0x50d490){const _0x80dc6b=atob(_0x50d490);let _0xabc19b="";for(let _0x5f091e=0x0;_0x5f091e<_0x80dc6b["length"];_0x5f091e++){_0xabc19b+="%"+("00"+_0x80dc6b["charCodeAt"](_0x5f091e)["toString"](0x10))["slice"](-2);}return decodeURIComponent(_0xabc19b);};}_0x5f09["decoded"]=_0x5f09["base64DecodeUnicode"];return _0x5f09["decoded"](_0x5f091e);};
+const keyEncoded=_0x5f09("0xf"),decodeFunc=_0x5f09("0x10");
+function verify(){
+try{
+const userInput=document.getElementById(atob(_0x5f09("0x1")))[atob(_0x5f09("0x2"))][atob(_0x5f09("0x3"))]();
+const truePass=window[atob(_0x5f09("0x10"))](keyEncoded);
+if(userInput===truePass){
+document.getElementById(atob(_0x5f09("0x0")))[atob(_0x5f09("0x6"))]=atob(_0x5f09("0x8"));
+document.getElementById(atob(_0x5f09("0x5")))[atob(_0x5f09("0x6"))]=atob(_0x5f09("0x9"));
+}else{
+document.getElementById(atob(_0x5f09("0xa")))[atob(_0x5f09("0xb"))]="❌ Wrong password!";
+}}
+catch(_0x2b3cb0){console.error("Error:",_0x2b3cb0);}}
+document.getElementById("checkBtn").addEventListener("click",verify);
+document.getElementById("pwd").addEventListener("keypress",function(_0x24f9fd){if(_0x24f9fd.key==="Enter")verify();});
+})();
+</script>
 </body>
 </html>
