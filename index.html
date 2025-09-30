@@ -1,101 +1,85 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>🔒 MTurk Earnings — Protected Viewer</title>
-  <style>
-    body {
-      font-family: Inter, Roboto, Arial, sans-serif;
-      background: #f4f6f8;
-      color: #111;
-      text-align: center;
-      padding: 40px;
-    }
-    h2 {
-      margin-top: 0;
-    }
-    .hidden { display: none; }
-    #passwordBox {
-      background: #fff;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-      display: inline-block;
-      margin-bottom: 50px;
-    }
-    #passInput {
-      padding: 10px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-      width: 200px;
-      text-align: center;
-    }
-    #unlockBtn {
-      padding: 10px 20px;
-      background: #111827;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-top: 10px;
-    }
-    #protected {
-      max-width: 1100px;
-      margin: 0 auto;
-      background: #fff;
-      border-radius: 12px;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-      padding: 20px 30px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-      font-size: 14px;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      text-align: center;
-    }
-    th {
-      background: #111827;
-      color: #fff;
-    }
-    button {
-      padding: 8px 16px;
-      background: #111827;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-top: 15px;
-    }
-    #status {
-      margin-top: 10px;
-      font-weight: 600;
-    }
-    #loadStatus {
-      margin-top: 10px;
-      font-style: italic;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>🔒 MTurk Earnings — Secure Dashboard</title>
+<style>
+  body {
+    font-family: Inter, Roboto, Arial, sans-serif;
+    background: #f4f6f8;
+    color: #111;
+    text-align: center;
+    padding: 40px;
+  }
+  .hidden { display: none; }
+  #passwordBox {
+    background: #fff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    display: inline-block;
+    margin-bottom: 40px;
+  }
+  input[type="password"] {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    width: 220px;
+    text-align: center;
+  }
+  button {
+    background: #111827;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    cursor: pointer;
+  }
+  #protected {
+    max-width: 1100px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+    padding: 20px 30px;
+    text-align: left;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 14px;
+  }
+  th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+  }
+  th {
+    background: #111827;
+    color: #fff;
+  }
+  #loadStatus {
+    margin-top: 10px;
+    font-style: italic;
+    text-align: center;
+  }
+</style>
 </head>
 <body>
-  <!-- 🔐 Password Section -->
+  <!-- 🔒 Password Gate -->
   <div id="passwordBox">
     <h2>🔒 Secure Access</h2>
-    <p>Enter password to view dashboard</p>
-    <input type="password" id="passInput" placeholder="Enter password" />
-    <br><br>
+    <p>Enter password to view earnings dashboard</p>
+    <input type="password" id="passInput" placeholder="Enter password" /><br><br>
     <button id="unlockBtn">Unlock</button>
     <p id="status"></p>
   </div>
 
-  <!-- 📊 Dashboard Section -->
+  <!-- 📊 Dashboard -->
   <div id="protected" class="hidden">
-    <h2>📊 MTurk Earnings Dashboard</h2>
+    <h2 style="text-align:center;">📊 MTurk Earnings Dashboard</h2>
     <table>
       <thead>
         <tr>
@@ -112,88 +96,97 @@
       </thead>
       <tbody id="earnBody"></tbody>
     </table>
-    <button id="csvExport">⬇️ Export to CSV</button>
-    <p id="loadStatus">Loading data...</p>
+    <div style="text-align:center;">
+      <button id="csvExport">⬇️ Export to CSV</button>
+      <p id="loadStatus">Loading data...</p>
+    </div>
   </div>
 
-  <!-- 🔧 Firebase Logic -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+  import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyCCtBCAJvQCDj8MXb2w90qYUqRrENIIGIQ",
-      authDomain: "mturk-monitordeep.firebaseapp.com",
-      projectId: "mturk-monitordeep",
-      storageBucket: "mturk-monitordeep.firebasestorage.app",
-      messagingSenderId: "58392297487",
-      appId: "1:58392297487:web:1365ad12110ffd0586637a"
-    };
+  // 🔧 Firebase Config
+  const firebaseConfig = {
+    apiKey: "AIzaSyCCtBCAJvQCDj8MXb2w90qYUqRrENIIGIQ",
+    authDomain: "mturk-monitordeep.firebaseapp.com",
+    projectId: "mturk-monitordeep",
+    storageBucket: "mturk-monitordeep.firebasestorage.app",
+    messagingSenderId: "58392297487",
+    appId: "1:58392297487:web:1365ad12110ffd0586637a"
+  };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
 
-    const encPass = "QUIyRUFSTklOR1MyMDI1"; // base64 for AB2EARNINGS2025
-    const decodePass = atob(encPass);
+  // 🔐 Password (encrypted)
+  const encPass = "QUIyRUFSTklOR1MyMDI1"; // AB2EARNINGS2025
+  const decodePass = atob(encPass);
 
-    const passBox = document.getElementById("passwordBox");
-    const protectedDiv = document.getElementById("protected");
-    const passInput = document.getElementById("passInput");
-    const statusEl = document.getElementById("status");
+  const passBox = document.getElementById("passwordBox");
+  const protectedDiv = document.getElementById("protected");
+  const passInput = document.getElementById("passInput");
+  const statusEl = document.getElementById("status");
 
-    document.getElementById("unlockBtn").onclick = () => {
-      if (passInput.value === decodePass) {
-        passBox.classList.add("hidden");
-        protectedDiv.classList.remove("hidden");
-        loadData();
-      } else {
-        statusEl.textContent = "❌ Wrong password";
-        statusEl.style.color = "red";
-      }
-    };
-
-    async function loadData() {
-      const loadStatus = document.getElementById("loadStatus");
-      const tbody = document.getElementById("earnBody");
-      tbody.innerHTML = "";
-      try {
-        const snapshot = await getDocs(collection(db, "earnings_logs"));
-        if (snapshot.empty) {
-          loadStatus.textContent = "⚠️ No records found in Firebase.";
-          return;
-        }
-        snapshot.forEach(doc => {
-          const d = doc.data();
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td>${d.workerId || ""}</td>
-            <td>${d.user || ""}</td>
-            <td>${d.ip || ""}</td>
-            <td>${d.currentEarnings || ""}</td>
-            <td>${d.bankAccount || ""}</td>
-            <td>${d.nextTransferDate || ""}</td>
-            <td>${d.lastMonthTransfer || ""}</td>
-            <td style="color:${d.alert ? 'red':'green'}">${d.alert || "✅ OK"}</td>
-            <td>${d.timestamp?.toDate ? d.timestamp.toDate().toLocaleString() : d.timestamp || ""}</td>`;
-          tbody.appendChild(tr);
-        });
-        loadStatus.textContent = "✅ Data loaded successfully.";
-      } catch (err) {
-        loadStatus.textContent = "❌ Firestore fetch error: " + err.message;
-        loadStatus.style.color = "red";
-      }
+  document.getElementById("unlockBtn").onclick = () => {
+    if (passInput.value === decodePass) {
+      passBox.classList.add("hidden");
+      protectedDiv.classList.remove("hidden");
+      loadData();
+      setInterval(loadData, 60000); // 🔁 Auto-refresh every 60 seconds
+    } else {
+      statusEl.textContent = "❌ Wrong password";
+      statusEl.style.color = "red";
     }
+  };
 
-    document.getElementById("csvExport").onclick = () => {
-      const rows = [...document.querySelectorAll("table tr")]
-        .map(r => [...r.children].map(c => `"${c.innerText}"`).join(","))
-        .join("\n");
-      const blob = new Blob([rows], { type: "text/csv" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "earnings_logs.csv";
-      a.click();
-    };
-  </script>
+  async function loadData() {
+    const loadStatus = document.getElementById("loadStatus");
+    const tbody = document.getElementById("earnBody");
+    tbody.innerHTML = "";
+    loadStatus.textContent = "⏳ Loading data...";
+    try {
+      const snapshot = await getDocs(collection(db, "earnings_logs"));
+      if (snapshot.empty) {
+        loadStatus.textContent = "⚠️ No data found in Firestore.";
+        return;
+      }
+      snapshot.forEach(doc => {
+        const d = doc.data();
+        const ts = d.timestamp?.toDate
+          ? d.timestamp.toDate().toLocaleString()
+          : (d.timestamp || "");
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${d.workerId || ""}</td>
+          <td>${d.user || ""}</td>
+          <td>${d.ip || ""}</td>
+          <td>${d.currentEarnings || ""}</td>
+          <td>${d.bankAccount || ""}</td>
+          <td>${d.nextTransferDate || ""}</td>
+          <td>${d.lastMonthTransfer || ""}</td>
+          <td style="color:${d.alert ? 'red':'green'}">${d.alert || "✅ OK"}</td>
+          <td>${ts}</td>`;
+        tbody.appendChild(tr);
+      });
+      loadStatus.textContent = "✅ Data loaded successfully (auto-refresh every 1 min).";
+      loadStatus.style.color = "green";
+    } catch (err) {
+      loadStatus.textContent = "❌ Firestore fetch error: " + err.message;
+      loadStatus.style.color = "red";
+    }
+  }
+
+  document.getElementById("csvExport").onclick = () => {
+    const rows = [...document.querySelectorAll("table tr")]
+      .map(r => [...r.children].map(c => `"${c.innerText}"`).join(","))
+      .join("\n");
+    const blob = new Blob([rows], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "earnings_logs.csv";
+    a.click();
+  };
+</script>
 </body>
 </html>
