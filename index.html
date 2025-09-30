@@ -3,11 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MTurk Earnings Dashboard + Alerts</title>
+<title>📊 MTurk Earnings + Alerts Dashboard</title>
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getFirestore, collection, getDocs, orderBy, query } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
+  // 🔧 Firebase Configuration
   const firebaseConfig = {
     apiKey: "AIzaSyCCtBCAJvQCDj8MXb2w90qYUqRrENIIGIQ",
     authDomain: "mturk-monitordeep.firebaseapp.com",
@@ -20,9 +21,14 @@
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
+  let tableData = [];
+
+  // 📥 Load Firestore Data
   async function loadData() {
     const tableBody = document.getElementById("dataBody");
     tableBody.innerHTML = "<tr><td colspan='9'>Loading...</td></tr>";
+    tableData = [];
+
     try {
       const q = query(collection(db, "earnings_logs"), orderBy("timestamp", "desc"));
       const snapshot = await getDocs(q);
@@ -31,63 +37,198 @@
       snapshot.forEach(doc => {
         const d = doc.data();
         const isAlert = d.alert && d.alert !== "OK";
+        const row = {
+          WorkerID: d.workerId || "",
+          CurrentEarnings: d.currentEarnings || "",
+          LastTransfer: d.lastTransferAmount || "",
+          LastTransferDate: d.lastTransferDate || "",
+          NextTransferDate: d.nextTransferDate || "",
+          BankAccount: d.bankAccount || "",
+          IP: d.ip || "",
+          Alert: d.alert || "OK",
+          Updated: new Date(d.timestamp?.seconds * 1000 || Date.now()).toLocaleString()
+        };
+        tableData.push(row);
+
         html += `
           <tr class="${isAlert ? "alert-row" : ""}">
-            <td>${d.workerId || ""}</td>
-            <td>${d.currentEarnings || ""}</td>
-            <td>${d.lastTransferAmount || ""}</td>
-            <td>${d.lastTransferDate || ""}</td>
-            <td>${d.nextTransferDate || ""}</td>
-            <td>${d.bankAccount || ""}</td>
-            <td>${d.ip || ""}</td>
-            <td>${d.alert || "OK"}</td>
-            <td>${new Date(d.timestamp?.seconds * 1000 || Date.now()).toLocaleString()}</td>
+            <td>${row.WorkerID}</td>
+            <td>${row.CurrentEarnings}</td>
+            <td>${row.LastTransfer}</td>
+            <td>${row.LastTransferDate}</td>
+            <td>${row.NextTransferDate}</td>
+            <td>${row.BankAccount}</td>
+            <td>${row.IP}</td>
+            <td>${row.Alert}</td>
+            <td>${row.Updated}</td>
           </tr>
         `;
       });
 
-      tableBody.innerHTML = html || "<tr><td colspan='9'>No data found</td></tr>";
-    } catch (e) {
-      console.error(e);
-      tableBody.innerHTML = "<tr><td colspan='9'>Error fetching data.</td></tr>";
+      tableBody.innerHTML = html || "<tr><td colspan='9'>No records found</td></tr>";
+    } catch (err) {
+      console.error("Error fetching data:", err);
+      tableBody.innerHTML = "<tr><td colspan='9'>Error loading data.</td></tr>";
     }
   }
 
+  // 🔍 Filter Table
+  function filterTable() {
+    const filter = document.getElementById("searchInput").value.toLowerCase();
+    const rows = document.querySelectorAll("#dataBody tr");
+    rows.forEach(row => {
+      const text = row.textContent.toLowerCase();
+      row.style.display = text.includes(filter) ? "" : "none";
+    });
+  }
+
+  // 📤 Export Table to CSV
+  function exportToCSV() {
+    if (tableData.length === 0) {
+      alert("No data to export.");
+      return;
+    }
+
+    const csvRows = [];
+    const headers = Object.keys(tableData[0]);
+    csvRows.push(headers.join(","));
+
+    for (const row of tableData) {
+      const values = headers.map(h => `"${(row[h] || "").toString().replace(/"/g, '""')}"`);
+      csvRows.push(values.join(","));
+    }
+
+    const csvContent = csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `MTurk_Earnings_${new Date().toISOString().split("T")[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  // 🕒 Initialize
   window.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("refreshBtn").onclick = loadData;
+    document.getElementById("refreshBtn").addEventListener("click", loadData);
+    document.getElementById("searchInput").addEventListener("keyup", filterTable);
+    document.getElementById("exportBtn").addEventListener("click", exportToCSV);
     loadData();
   });
 </script>
 
 <style>
-  body { font-family: 'Inter', sans-serif; background: #f7fafc; margin: 0; padding: 20px; color: #111; }
-  h1 { text-align: center; color: #1d4ed8; }
-  table { width: 100%; border-collapse: collapse; margin-top: 20px; background: white; border-radius: 8px; overflow: hidden; }
-  th, td { padding: 10px; border-bottom: 1px solid #eee; text-align: left; }
-  th { background: #e5e7eb; }
-  tr.alert-row { background: #fee2e2 !important; color: #b91c1c; font-weight: 600; }
-  button { background: #2563eb; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; }
+  body {
+    font-family: "Inter", Roboto, Arial, sans-serif;
+    background: #f8fafc;
+    margin: 0;
+    padding: 20px;
+    color: #111;
+  }
+  header {
+    text-align: center;
+    background: linear-gradient(135deg, #2563eb, #1e3a8a);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+  }
+  main {
+    margin-top: 20px;
+  }
+  .controls {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+  }
+  input[type="text"] {
+    padding: 8px 10px;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    width: 260px;
+  }
+  button {
+    background: #2563eb;
+    border: none;
+    color: white;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-left: 8px;
+  }
   button:hover { background: #1d4ed8; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.05);
+  }
+  th, td {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    text-align: left;
+    font-size: 14px;
+  }
+  th {
+    background: #f1f5f9;
+  }
+  tr.alert-row {
+    background: #fee2e2 !important;
+    color: #b91c1c;
+    font-weight: 600;
+  }
+  tr:hover {
+    background: #f9fafb;
+  }
+  footer {
+    text-align: center;
+    margin-top: 15px;
+    font-size: 12px;
+    color: #666;
+  }
 </style>
 </head>
+
 <body>
-  <h1>📊 MTurk Earnings + Alerts</h1>
-  <div style="text-align:center"><button id="refreshBtn">🔄 Refresh</button></div>
-  <table>
-    <thead>
-      <tr>
-        <th>Worker ID</th>
-        <th>Current Earnings</th>
-        <th>Last Transfer ($)</th>
-        <th>Last Transfer Date</th>
-        <th>Next Transfer Date</th>
-        <th>Bank</th>
-        <th>IP</th>
-        <th>ALERT</th>
-        <th>Updated</th>
-      </tr>
-    </thead>
-    <tbody id="dataBody"><tr><td colspan="9">Loading...</td></tr></tbody>
-  </table>
+  <header>
+    <h1>📊 MTurk Earnings + Alerts Dashboard</h1>
+    <p>Data from Firebase (Auto-updated from Violentmonkey Script)</p>
+  </header>
+
+  <main>
+    <div class="controls">
+      <input type="text" id="searchInput" placeholder="🔍 Filter by worker ID, bank, or alert...">
+      <div>
+        <button id="refreshBtn">🔄 Refresh</button>
+        <button id="exportBtn">📤 Export CSV</button>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Worker ID</th>
+          <th>Current Earnings</th>
+          <th>Last Transfer ($)</th>
+          <th>Last Transfer Date</th>
+          <th>Next Transfer Date</th>
+          <th>Bank</th>
+          <th>IP</th>
+          <th>Alert</th>
+          <th>Updated</th>
+        </tr>
+      </thead>
+      <tbody id="dataBody">
+        <tr><td colspan="9">Loading...</td></tr>
+      </tbody>
+    </table>
+  </main>
+
+  <footer>
+    © 2025 AB2Soft | Live Firebase Sync | CSV Export Supported
+  </footer>
 </body>
 </html>
