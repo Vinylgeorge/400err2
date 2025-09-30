@@ -1,292 +1,266 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>🔒 MTurk Earnings + Monthly Transfers + Alerts</title>
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🔒 Secure MTurk Earnings Dashboard</title>
 <style>
   body {
     font-family: "Inter", Roboto, Arial, sans-serif;
-    background: #f8fafc;
-    margin: 0;
-    padding: 20px;
+    background: #f9fafb;
     color: #111;
+    margin: 0;
+    padding: 0;
   }
-  header {
-    text-align: center;
-    background: linear-gradient(135deg, #2563eb, #1e3a8a);
-    color: white;
-    padding: 20px;
+  #auth-section, #dashboard {
+    max-width: 1200px;
+    margin: 60px auto;
+    background: white;
     border-radius: 10px;
+    padding: 30px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
   }
-  main { margin-top: 20px; }
-  .controls {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 15px;
-    flex-wrap: wrap;
+  h1 {
+    text-align: center;
+    color: #1e3a8a;
+    margin-bottom: 10px;
   }
-  input[type="text"], input[type="password"] {
-    padding: 8px 10px;
-    font-size: 14px;
-    border: 1px solid #ddd;
+  #password {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
     border-radius: 6px;
+    font-size: 16px;
+    margin-top: 10px;
   }
-  #passInput { width: 220px; text-align: center; }
   button {
     background: #2563eb;
-    border: none;
     color: white;
-    padding: 8px 14px;
+    border: none;
     border-radius: 6px;
+    padding: 10px 18px;
     cursor: pointer;
-    margin-left: 8px;
+    margin-top: 15px;
+    font-size: 15px;
   }
   button:hover { background: #1d4ed8; }
   table {
     width: 100%;
     border-collapse: collapse;
+    margin-top: 20px;
     background: white;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 0 6px rgba(0, 0, 0, 0.05);
   }
   th, td {
     padding: 10px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid #e5e7eb;
     text-align: left;
-    font-size: 14px;
   }
-  th { background: #f1f5f9; }
-  tr.alert-row {
-    background: #fee2e2 !important;
+  th {
+    background: #f1f5f9;
+  }
+  .alert-row {
+    background: #fee2e2;
     color: #b91c1c;
     font-weight: 600;
   }
-  tr:hover { background: #f9fafb; }
+  .controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  input[type="text"] {
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    width: 260px;
+  }
   footer {
     text-align: center;
-    margin-top: 15px;
-    font-size: 12px;
     color: #666;
-  }
-  .hidden { display: none; }
-  #passwordBox {
-    text-align: center;
-    background: white;
-    padding: 30px;
-    border-radius: 10px;
-    box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-    max-width: 400px;
-    margin: 80px auto;
+    margin-top: 20px;
+    font-size: 13px;
   }
 </style>
 </head>
-
 <body>
-  <!-- 🔐 Password Gate -->
-  <div id="passwordBox">
-    <h2>🔒 Secure Access</h2>
-    <p>Enter password to view the dashboard</p>
-    <input type="password" id="passInput" placeholder="Enter password" /><br><br>
-    <button id="unlockBtn">Unlock</button>
-    <p id="status"></p>
+
+<div id="auth-section">
+  <h1>🔒 Secure Access</h1>
+  <p>Enter password to view MTurk Earnings Dashboard</p>
+  <input type="password" id="password" placeholder="Enter password">
+  <button id="unlockBtn">Unlock</button>
+  <p id="auth-msg" style="color:red;margin-top:10px;"></p>
+</div>
+
+<div id="dashboard" style="display:none;">
+  <h1>📊 MTurk Earnings + Alerts + Monthly Transfers</h1>
+  <div class="controls">
+    <input type="text" id="searchInput" placeholder="🔍 Filter by worker, bank, or alert...">
+    <div>
+      <button id="exportBtn">📤 Export CSV</button>
+    </div>
   </div>
 
-  <!-- 📊 Protected Dashboard -->
-  <div id="dashboard" class="hidden">
-    <header>
-      <h1>📊 MTurk Earnings + Alerts + Monthly Transfers</h1>
-      <p>Auto-synced from Firebase — grouped by transfer month</p>
-    </header>
-
-    <main>
-      <div class="controls">
-        <input type="text" id="searchInput" placeholder="🔍 Filter by worker, bank, or alert...">
-        <div>
-          <button id="refreshBtn">🔄 Refresh</button>
-          <button id="exportBtn">📤 Export CSV</button>
-        </div>
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Worker ID</th>
-            <th>Current Earnings</th>
-            <th>Last Transfer ($)</th>
-            <th>Last Transfer Date</th>
-            <th>Last Month Transfer ($)</th>
-            <th>Next Transfer Date</th>
-            <th>Bank</th>
-            <th>IP</th>
-            <th>Alert</th>
-            <th>Updated</th>
-          </tr>
-        </thead>
-        <tbody id="dataBody">
-          <tr><td colspan="10">Loading...</td></tr>
-        </tbody>
-      </table>
-    </main>
-
-    <footer>
-      © 2025 AB2Soft | Monthly Summaries + Alert Monitor + CSV Export
-    </footer>
-  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Worker ID</th>
+        <th>Current Earnings</th>
+        <th>Last Transfer ($)</th>
+        <th>Last Transfer Date</th>
+        <th>Last Month Total ($)</th>
+        <th>Next Transfer Date</th>
+        <th>Bank</th>
+        <th>IP</th>
+        <th>Alert</th>
+        <th>Updated</th>
+      </tr>
+    </thead>
+    <tbody id="dataBody">
+      <tr><td colspan="10">Waiting for data...</td></tr>
+    </tbody>
+  </table>
+  <footer>© 2025 AB2Soft | Real-time Firebase Sync + CSV Export</footer>
+</div>
 
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, getDocs, orderBy, query } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-  // 🔐 Encrypted password (base64 for "AB2EARNINGS2025")
-  const encPass = "QUIyRUFSTklOR1MyMDI1";
-  const decodePass = atob(encPass);
+// 🔐 Encrypted password hash for "AB2EARNINGS2025"
+const ENCRYPTED_PASS = "1ee435c00f52b07951a9a3fd0e96e45f"; // MD5 hash
 
-  const passBox = document.getElementById("passwordBox");
-  const dashboard = document.getElementById("dashboard");
-  const statusEl = document.getElementById("status");
+// 🧮 MD5 (browser)
+async function md5(message) {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest("MD5", msgBuffer);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("");
+}
 
-  document.getElementById("unlockBtn").onclick = () => {
-    const inputVal = document.getElementById("passInput").value.trim();
-    if (inputVal === decodePass) {
-      passBox.classList.add("hidden");
-      dashboard.classList.remove("hidden");
-      loadData();
-    } else {
-      statusEl.textContent = "❌ Wrong password";
-      statusEl.style.color = "red";
-    }
-  };
+// 🔓 Password validation
+document.getElementById("unlockBtn").addEventListener("click", async () => {
+  const passInput = document.getElementById("password").value.trim();
+  const hash = await md5(passInput);
+  const msg = document.getElementById("auth-msg");
 
-  // 🔧 Firebase Config
-  const firebaseConfig = {
-    apiKey: "AIzaSyCCtBCAJvQCDj8MXb2w90qYUqRrENIIGIQ",
-    authDomain: "mturk-monitordeep.firebaseapp.com",
-    projectId: "mturk-monitordeep",
-    storageBucket: "mturk-monitordeep.firebasestorage.app",
-    messagingSenderId: "58392297487",
-    appId: "1:58392297487:web:1365ad12110ffd0586637a"
-  };
-
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  let tableData = [];
-
-  // 🧮 Helper: Convert "09/09/25" to month key
-  function getMonthKey(dateStr) {
-    if (!dateStr) return null;
-    const [mm, dd, yy] = dateStr.split("/");
-    return `${yy}-${mm}`; // e.g., "25-09"
+  if (hash === ENCRYPTED_PASS) {
+    document.getElementById("auth-section").style.display = "none";
+    document.getElementById("dashboard").style.display = "block";
+    initDashboard();
+  } else {
+    msg.textContent = "❌ Incorrect password";
   }
+});
 
-  // 📥 Load Firestore Data
-  async function loadData() {
-    const tableBody = document.getElementById("dataBody");
-    tableBody.innerHTML = "<tr><td colspan='10'>Loading...</td></tr>";
+// ⚙️ Firebase setup
+const firebaseConfig = {
+  apiKey: "AIzaSyCCtBCAJvQCDj8MXb2w90qYUqRrENIIGIQ",
+  authDomain: "mturk-monitordeep.firebaseapp.com",
+  projectId: "mturk-monitordeep",
+  storageBucket: "mturk-monitordeep.firebasestorage.app",
+  messagingSenderId: "58392297487",
+  appId: "1:58392297487:web:1365ad12110ffd0586637a"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// 🧮 Helper: Get month key
+function getMonthKey(dateStr) {
+  if (!dateStr) return null;
+  const [mm, dd, yy] = dateStr.split("/");
+  return `${yy}-${mm}`;
+}
+
+// 📊 Initialize Dashboard
+let tableData = [];
+function initDashboard() {
+  const q = query(collection(db, "earnings_logs"), orderBy("timestamp", "desc"));
+  const tableBody = document.getElementById("dataBody");
+
+  onSnapshot(q, snapshot => {
+    tableBody.innerHTML = "<tr><td colspan='10'>Updating...</td></tr>";
     tableData = [];
 
-    try {
-      const q = query(collection(db, "earnings_logs"), orderBy("timestamp", "desc"));
-      const snapshot = await getDocs(q);
+    const monthlyTransfers = {};
+    snapshot.forEach(doc => {
+      const d = doc.data();
+      const key = getMonthKey(d.lastTransferDate);
+      if (key) {
+        if (!monthlyTransfers[key]) monthlyTransfers[key] = 0;
+        monthlyTransfers[key] += parseFloat(d.lastTransferAmount || 0);
+      }
+    });
 
-      const monthlyTransfers = {};
-      snapshot.forEach(doc => {
-        const d = doc.data();
-        const key = getMonthKey(d.lastTransferDate);
-        if (key) {
-          if (!monthlyTransfers[key]) monthlyTransfers[key] = 0;
-          const amount = parseFloat(d.lastTransferAmount || 0);
-          monthlyTransfers[key] += isNaN(amount) ? 0 : amount;
-        }
-      });
+    let html = "";
+    snapshot.forEach(doc => {
+      const d = doc.data();
+      const isAlert = d.alert && d.alert !== "OK";
+      const monthKey = getMonthKey(d.lastTransferDate);
+      const lastMonthTotal = monthKey ? (monthlyTransfers[monthKey] || 0).toFixed(2) : "0.00";
 
-      let html = "";
-      snapshot.forEach(doc => {
-        const d = doc.data();
-        const isAlert = d.alert && d.alert !== "OK";
-        const monthKey = getMonthKey(d.lastTransferDate);
-        const lastMonthTotal = monthKey ? monthlyTransfers[monthKey].toFixed(2) : "0.00";
+      const row = {
+        WorkerID: d.workerId || "",
+        CurrentEarnings: d.currentEarnings || "",
+        LastTransfer: d.lastTransferAmount || "",
+        LastTransferDate: d.lastTransferDate || "",
+        LastMonthTotal: lastMonthTotal,
+        NextTransferDate: d.nextTransferDate || "",
+        BankAccount: d.bankAccount || "",
+        IP: d.ip || "",
+        Alert: d.alert || "OK",
+        Updated: new Date(d.timestamp?.seconds * 1000 || Date.now()).toLocaleString()
+      };
+      tableData.push(row);
 
-        const row = {
-          WorkerID: d.workerId || "",
-          CurrentEarnings: d.currentEarnings || "",
-          LastTransfer: d.lastTransferAmount || "",
-          LastTransferDate: d.lastTransferDate || "",
-          LastMonthTotal: lastMonthTotal,
-          NextTransferDate: d.nextTransferDate || "",
-          BankAccount: d.bankAccount || "",
-          IP: d.ip || "",
-          Alert: d.alert || "OK",
-          Updated: new Date(d.timestamp?.seconds * 1000 || Date.now()).toLocaleString()
-        };
-        tableData.push(row);
+      html += `
+        <tr class="${isAlert ? "alert-row" : ""}">
+          <td>${row.WorkerID}</td>
+          <td>${row.CurrentEarnings}</td>
+          <td>${row.LastTransfer}</td>
+          <td>${row.LastTransferDate}</td>
+          <td>${row.LastMonthTotal}</td>
+          <td>${row.NextTransferDate}</td>
+          <td>${row.BankAccount}</td>
+          <td>${row.IP}</td>
+          <td>${row.Alert}</td>
+          <td>${row.Updated}</td>
+        </tr>`;
+    });
 
-        html += `
-          <tr class="${isAlert ? "alert-row" : ""}">
-            <td>${row.WorkerID}</td>
-            <td>${row.CurrentEarnings}</td>
-            <td>${row.LastTransfer}</td>
-            <td>${row.LastTransferDate}</td>
-            <td>${row.LastMonthTotal}</td>
-            <td>${row.NextTransferDate}</td>
-            <td>${row.BankAccount}</td>
-            <td>${row.IP}</td>
-            <td>${row.Alert}</td>
-            <td>${row.Updated}</td>
-          </tr>
-        `;
-      });
+    tableBody.innerHTML = html || "<tr><td colspan='10'>No records found</td></tr>";
+  });
+}
 
-      tableBody.innerHTML = html || "<tr><td colspan='10'>No records found</td></tr>";
-    } catch (err) {
-      console.error("Error fetching data:", err);
-      tableBody.innerHTML = "<tr><td colspan='10'>Error loading data.</td></tr>";
-    }
-  }
-
-  // 🔍 Filter Table
-  function filterTable() {
-    const filter = document.getElementById("searchInput").value.toLowerCase();
-    const rows = document.querySelectorAll("#dataBody tr");
-    rows.forEach(row => {
-      const text = row.textContent.toLowerCase();
-      row.style.display = text.includes(filter) ? "" : "none";
+// 🔍 Filter table
+document.addEventListener("keyup", e => {
+  if (e.target.id === "searchInput") {
+    const filter = e.target.value.toLowerCase();
+    document.querySelectorAll("#dataBody tr").forEach(tr => {
+      tr.style.display = tr.textContent.toLowerCase().includes(filter) ? "" : "none";
     });
   }
+});
 
-  // 📤 Export Table to CSV
-  function exportToCSV() {
-    if (tableData.length === 0) {
-      alert("No data to export.");
-      return;
-    }
-
-    const csvRows = [];
-    const headers = Object.keys(tableData[0]);
-    csvRows.push(headers.join(","));
-    for (const row of tableData) {
-      const values = headers.map(h => `"${(row[h] || "").toString().replace(/"/g, '""')}"`);
-      csvRows.push(values.join(","));
-    }
-
-    const csvContent = csvRows.join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = `MTurk_Earnings_${new Date().toISOString().split("T")[0]}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+// 📤 Export CSV
+document.getElementById("exportBtn").addEventListener("click", () => {
+  if (!tableData.length) return alert("No data to export");
+  const headers = Object.keys(tableData[0]);
+  const csvRows = [headers.join(",")];
+  for (const row of tableData) {
+    csvRows.push(headers.map(h => `"${(row[h] || "").toString().replace(/"/g, '""')}"`).join(","));
   }
-
-  // 🕒 Initialize
-  window.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("refreshBtn").addEventListener("click", loadData);
-    document.getElementById("searchInput").addEventListener("keyup", filterTable);
-    document.getElementById("exportBtn").addEventListener("click", exportToCSV);
-  });
+  const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `Earnings_${new Date().toISOString().split("T")[0]}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
 </script>
 </body>
 </html>
