@@ -2,147 +2,116 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>MTurk Earnings Secure Uploader</title>
+<title>MTurk Earnings — Live Firebase Viewer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body{font-family:system-ui,sans-serif;background:#f5f7fa;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;margin:0;color:#333}
-#login,#protected{background:#fff;padding:30px;border-radius:12px;box-shadow:0 0 15px rgba(0,0,0,.1);text-align:center}
-#protected{display:none!important}
-input{padding:10px 14px;border-radius:8px;border:1px solid #ccc;margin-top:10px;width:240px;text-align:center}
+body{font-family:system-ui,sans-serif;background:#f5f7fa;margin:0;padding:30px;text-align:center}
+#login,#viewer{background:#fff;padding:25px;border-radius:10px;box-shadow:0 0 15px rgba(0,0,0,.1);margin:auto;max-width:1200px}
+#viewer{display:none}
+input{padding:10px;border:1px solid #ccc;border-radius:8px;width:250px;margin-top:10px;text-align:center}
 button{margin-top:10px;padding:10px 20px;border:none;border-radius:8px;background:#0078d7;color:#fff;cursor:pointer}
+table{border-collapse:collapse;width:100%;margin-top:20px;font-size:14px}
+th,td{border:1px solid #ddd;padding:8px}
+th{background:#0078d7;color:#fff}
+tr:nth-child(even){background:#f9f9f9}
+#status{margin-top:10px;color:#555;font-size:14px}
 </style>
 </head>
 <body>
 <div id="login">
   <h2>🔒 Secure Access</h2>
-  <input id="p" type="password" placeholder="Enter password">
-  <br><button id="u">Unlock</button>
-  <p id="m"></p>
+  <input id="pw" type="password" placeholder="Enter password">
+  <br><button id="unlock">Unlock</button>
+  <p id="msg"></p>
 </div>
 
-<div id="protected">
-  <h3>🔁 Running background sync...</h3>
-  <p>This page uploads data automatically when updates are detected.</p>
+<div id="viewer">
+  <h2>📊 Live MTurk Earnings (Firebase)</h2>
+  <p id="status">Connecting...</p>
+  <button id="csvExport">⬇️ Export to CSV</button>
+  <table id="tbl">
+    <thead>
+      <tr>
+        <th>Worker ID</th><th>User</th><th>IP</th>
+        <th>Current Earnings</th><th>Bank</th><th>Next Transfer</th>
+        <th>Last Transfer</th><th>Amount</th><th>Alert</th><th>Timestamp</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc } 
+import { getFirestore, collection, onSnapshot, query, orderBy } 
   from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-(function(){
-"use strict";
-const _0xpw = atob("QUIyRUFSTklOR1MyMDI1"); // password AB2EARNINGS2025
-document.getElementById("u").addEventListener("click",unlock);
-document.getElementById("p").addEventListener("keypress",e=>{if(e.key==="Enter")unlock();});
+const firebaseConfig = {
+  apiKey: "AIzaSyCCtBCAJvQCDj8MXb2w90qYUqRrENIIGIQ",
+  authDomain: "mturk-monitordeep.firebaseapp.com",
+  projectId: "mturk-monitordeep",
+  storageBucket: "mturk-monitordeep.firebasestorage.app",
+  messagingSenderId: "58392297487",
+  appId: "1:58392297487:web:1365ad12110ffd0586637a"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-function unlock(){
-  const v=document.getElementById("p").value.trim();
-  if(v===_0xpw){
-    document.getElementById("login").style.display="none";
-    document.getElementById("protected").style.display="block";
-    startUploader();
-  }else{
-    document.getElementById("m").textContent="❌ Wrong password!";
+const key = atob("QUIyRUFSTklOR1MyMDI1"); // AB2EARNINGS2025
+
+document.getElementById("unlock").onclick = () => {
+  const input = document.getElementById("pw").value.trim();
+  if (input === key) {
+    document.getElementById("login").style.display = "none";
+    document.getElementById("viewer").style.display = "block";
+    startLiveViewer();
+  } else {
+    document.getElementById("msg").textContent = "❌ Incorrect password!";
   }
-}
+};
+document.getElementById("pw").addEventListener("keypress", e => {
+  if (e.key === "Enter") document.getElementById("unlock").click();
+});
 
-async function startUploader(){
-  const firebaseConfig={
-    apiKey:"AIzaSyCCtBCAJvQCDj8MXb2w90qYUqRrENIIGIQ",
-    authDomain:"mturk-monitordeep.firebaseapp.com",
-    projectId:"mturk-monitordeep",
-    storageBucket:"mturk-monitordeep.firebasestorage.app",
-    messagingSenderId:"58392297487",
-    appId:"1:58392297487:web:1365ad12110ffd0586637a"
-  };
-  const app=initializeApp(firebaseConfig);
-  const db=getFirestore(app);
+function startLiveViewer() {
+  const tbody = document.querySelector("#tbl tbody");
+  const status = document.getElementById("status");
 
-  const sheetUrl="https://docs.google.com/spreadsheets/d/1Ytmr7dHSAv69N27uZcrhKaEerL8WhzMCI02vugq_C_M/export?format=csv&gid=0";
+  status.textContent = "📡 Connected — waiting for updates...";
 
-  // Helper to parse CSV → map
-  async function loadUserMap(){
-    const res=await fetch(sheetUrl);
-    const text=await res.text();
-    const rows=text.trim().split("\n").map(r=>r.split(","));
-    const header=rows.shift();
-    const idxID=header.indexOf("workerId");
-    const idxUser=header.indexOf("user");
-    const map={};
-    rows.forEach(r=>{
-      if(r[idxID]) map[r[idxID].trim()]=r[idxUser]?r[idxUser].trim():"";
+  const q = query(collection(db, "earnings"), orderBy("timestamp", "desc"));
+  onSnapshot(q, snapshot => {
+    tbody.innerHTML = "";
+    snapshot.forEach(doc => {
+      const d = doc.data();
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${d.workerId || ""}</td>
+        <td>${d.user || ""}</td>
+        <td>${d.ip || ""}</td>
+        <td>${d.currentEarnings || ""}</td>
+        <td>${d.bankAccount || ""}</td>
+        <td>${d.nextTransferDate || ""}</td>
+        <td>${d.lastTransferDate || ""}</td>
+        <td>${d.lastTransferAmount || ""}</td>
+        <td style="color:${d.alert ? 'red' : 'green'}">${d.alert || "OK"}</td>
+        <td>${new Date(d.timestamp || "").toLocaleString()}</td>`;
+      tbody.appendChild(row);
     });
-    return map;
-  }
+    status.textContent = `✅ Live snapshot — ${snapshot.size} records loaded`;
+  });
 
-  // Extract WorkerID
-  function extractWorkerID(){
-    try{
-      const els=document.querySelectorAll('[data-react-props*="textToCopy"]');
-      for(const e of els){
-        const d=e.getAttribute("data-react-props").replace(/&quot;/g,'"');
-        const p=JSON.parse(d);
-        if(p.textToCopy && /^A[0-9A-Z]+$/.test(p.textToCopy)) return p.textToCopy;
-      }
-      const txt=document.body.innerText.match(/\bA[0-9A-Z]{10,}\b/);
-      return txt?txt[0]:"N/A";
-    }catch{return"N/A";}
-  }
-
-  // Extract earnings info
-  function getEarningsData(){
-    const html=document.documentElement.innerHTML;
-    const mE=html.match(/Current Earnings:\s*\$([\d.]+)/);
-    const mB=html.match(/bank account\s*<a[^>]*>([^<]+)/i);
-    const mN=html.match(/on\s+([A-Z][a-z]{2}\s+\d{2},\s+\d{4})\s+based on/i);
-    const jsonMatch=html.match(/data-react-props="([^"]+)"/);
-    let lastDate="N/A",lastAmt="N/A";
-    if(jsonMatch){
-      try{
-        const js=JSON.parse(jsonMatch[1].replace(/&quot;/g,'"'));
-        if(js.bodyData && js.bodyData[0]){
-          lastDate=js.bodyData[0].requestedDate||"";
-          lastAmt=js.bodyData[0].amountRequested||"";
-        }
-      }catch{}
-    }
-    return {
-      currentEarnings:mE?("$"+mE[1]):"",
-      bankAccount:mB?mB[1].trim():"",
-      nextTransferDate:mN?mN[1].trim():"",
-      lastTransferDate:lastDate,
-      lastTransferAmount:lastAmt
-    };
-  }
-
-  // Compare and upload only if changed
-  async function syncData(){
-    const userMap=await loadUserMap();
-    const workerId=extractWorkerID();
-    if(workerId==="N/A") return;
-    const ipResp=await fetch("https://api.ipify.org?format=json").then(r=>r.json()).catch(()=>({ip:"N/A"}));
-    const ip=ipResp.ip;
-    const earn=getEarningsData();
-    const user=userMap[workerId]||"Unknown";
-    const docRef=doc(db,"earnings",workerId);
-    const prev=(await getDoc(docRef)).data()||{};
-    let alert="";
-    if(prev.bankAccount && prev.bankAccount!==earn.bankAccount) alert="Bank Changed";
-    if(prev.ip && prev.ip!==ip) alert="IP Changed";
-    if(alert){await setDoc(docRef,{...prev,alert,timestamp:new Date().toISOString()});return;}
-    const changed=JSON.stringify(prev)!==JSON.stringify({...earn,workerId,user,ip});
-    if(changed){
-      await setDoc(docRef,{...earn,workerId,user,ip,alert:"",timestamp:new Date().toISOString()});
-      console.log("⬆️ Uploaded update for",workerId);
-    }else{
-      console.log("⏸ No change detected");
-    }
-  }
-
-  await syncData();
+  document.getElementById("csvExport").onclick = () => {
+    const csv = [...document.querySelectorAll("#tbl tr")]
+      .map(r => [...r.children].map(c => `"${c.innerText}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "earnings_snapshot.csv";
+    a.click();
+  };
 }
-})();
 </script>
 </body>
 </html>
