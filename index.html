@@ -1,117 +1,131 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>MTurk Earnings — Live Firebase Viewer</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-body{font-family:system-ui,sans-serif;background:#f5f7fa;margin:0;padding:30px;text-align:center}
-#login,#viewer{background:#fff;padding:25px;border-radius:10px;box-shadow:0 0 15px rgba(0,0,0,.1);margin:auto;max-width:1200px}
-#viewer{display:none}
-input{padding:10px;border:1px solid #ccc;border-radius:8px;width:250px;margin-top:10px;text-align:center}
-button{margin-top:10px;padding:10px 20px;border:none;border-radius:8px;background:#0078d7;color:#fff;cursor:pointer}
-table{border-collapse:collapse;width:100%;margin-top:20px;font-size:14px}
-th,td{border:1px solid #ddd;padding:8px}
-th{background:#0078d7;color:#fff}
-tr:nth-child(even){background:#f9f9f9}
-#status{margin-top:10px;color:#555;font-size:14px}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🔒 MTurk Earnings — Protected Viewer</title>
+  <style>
+    body { font-family: Inter, Roboto, Arial, sans-serif; background: #f4f6f8; color: #111; text-align: center; padding: 40px; }
+    .hidden { display: none; }
+    #protected { max-width: 1000px; margin: 0 auto; background: #fff; border-radius: 12px; box-shadow: 0 3px 10px rgba(0,0,0,0.1); padding: 20px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    th { background: #111827; color: #fff; }
+    button { padding: 8px 16px; background: #111827; color: #fff; border: none; border-radius: 6px; cursor: pointer; margin-top: 10px; }
+    #status { margin-top: 10px; font-weight: 600; }
+    #passwordBox { background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: inline-block; }
+  </style>
 </head>
 <body>
-<div id="login">
-  <h2>🔒 Secure Access</h2>
-  <input id="pw" type="password" placeholder="Enter password">
-  <br><button id="unlock">Unlock</button>
-  <p id="msg"></p>
-</div>
+  <div id="passwordBox">
+    <h2>🔒 Secure Access</h2>
+    <p>Enter password</p>
+    <input type="password" id="passInput" placeholder="Enter password" />
+    <br><br>
+    <button id="unlockBtn">Unlock</button>
+    <p id="status"></p>
+  </div>
 
-<div id="viewer">
-  <h2>📊 Live MTurk Earnings (Firebase)</h2>
-  <p id="status">Connecting...</p>
-  <button id="csvExport">⬇️ Export to CSV</button>
-  <table id="tbl">
-    <thead>
-      <tr>
-        <th>Worker ID</th><th>User</th><th>IP</th>
-        <th>Current Earnings</th><th>Bank</th><th>Next Transfer</th>
-        <th>Last Transfer</th><th>Amount</th><th>Alert</th><th>Timestamp</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</div>
+  <div id="protected" class="hidden">
+    <h2>📊 MTurk Earnings Dashboard</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Worker ID</th>
+          <th>User</th>
+          <th>IP</th>
+          <th>Current Earnings</th>
+          <th>Bank</th>
+          <th>Next Transfer</th>
+          <th>Last Month Transfer</th>
+          <th>Alert</th>
+          <th>Timestamp</th>
+        </tr>
+      </thead>
+      <tbody id="earnBody"></tbody>
+    </table>
+    <button id="csvExport">⬇️ Export to CSV</button>
+    <p id="loadStatus">Loading data...</p>
+  </div>
 
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-import { getFirestore, collection, onSnapshot, query, orderBy } 
-  from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyCCtBCAJvQCDj8MXb2w90qYUqRrENIIGIQ",
-  authDomain: "mturk-monitordeep.firebaseapp.com",
-  projectId: "mturk-monitordeep",
-  storageBucket: "mturk-monitordeep.firebasestorage.app",
-  messagingSenderId: "58392297487",
-  appId: "1:58392297487:web:1365ad12110ffd0586637a"
-};
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+    // ✅ Firebase Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyCCtBCAJvQCDj8MXb2w90qYUqRrENIIGIQ",
+      authDomain: "mturk-monitordeep.firebaseapp.com",
+      projectId: "mturk-monitordeep",
+      storageBucket: "mturk-monitordeep.firebasestorage.app",
+      messagingSenderId: "58392297487",
+      appId: "1:58392297487:web:1365ad12110ffd0586637a"
+    };
 
-const key = atob("QUIyRUFSTklOR1MyMDI1"); // AB2EARNINGS2025
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-document.getElementById("unlock").onclick = () => {
-  const input = document.getElementById("pw").value.trim();
-  if (input === key) {
-    document.getElementById("login").style.display = "none";
-    document.getElementById("viewer").style.display = "block";
-    startLiveViewer();
-  } else {
-    document.getElementById("msg").textContent = "❌ Incorrect password!";
-  }
-};
-document.getElementById("pw").addEventListener("keypress", e => {
-  if (e.key === "Enter") document.getElementById("unlock").click();
-});
+    const encPass = "QUIyRUFSTklOR1MyMDI1"; // 🔐 Encrypted "AB2EARNINGS2025"
+    const decodePass = atob(encPass);
 
-function startLiveViewer() {
-  const tbody = document.querySelector("#tbl tbody");
-  const status = document.getElementById("status");
+    const passBox = document.getElementById("passwordBox");
+    const protectedDiv = document.getElementById("protected");
+    const passInput = document.getElementById("passInput");
+    const statusEl = document.getElementById("status");
 
-  status.textContent = "📡 Connected — waiting for updates...";
+    document.getElementById("unlockBtn").onclick = () => {
+      if (passInput.value === decodePass) {
+        passBox.classList.add("hidden");
+        protectedDiv.classList.remove("hidden");
+        loadData();
+      } else {
+        statusEl.textContent = "❌ Wrong password";
+        statusEl.style.color = "red";
+      }
+    };
 
-  const q = query(collection(db, "earnings"), orderBy("timestamp", "desc"));
-  onSnapshot(q, snapshot => {
-    tbody.innerHTML = "";
-    snapshot.forEach(doc => {
-      const d = doc.data();
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td>${d.workerId || ""}</td>
-        <td>${d.user || ""}</td>
-        <td>${d.ip || ""}</td>
-        <td>${d.currentEarnings || ""}</td>
-        <td>${d.bankAccount || ""}</td>
-        <td>${d.nextTransferDate || ""}</td>
-        <td>${d.lastTransferDate || ""}</td>
-        <td>${d.lastTransferAmount || ""}</td>
-        <td style="color:${d.alert ? 'red' : 'green'}">${d.alert || "OK"}</td>
-        <td>${new Date(d.timestamp || "").toLocaleString()}</td>`;
-      tbody.appendChild(row);
-    });
-    status.textContent = `✅ Live snapshot — ${snapshot.size} records loaded`;
-  });
+    async function loadData() {
+      const loadStatus = document.getElementById("loadStatus");
+      const tbody = document.getElementById("earnBody");
+      tbody.innerHTML = "";
+      try {
+        const snapshot = await getDocs(collection(db, "earnings_logs"));
+        if (snapshot.empty) {
+          loadStatus.textContent = "⚠️ No records found in Firebase.";
+          return;
+        }
+        snapshot.forEach(doc => {
+          const d = doc.data();
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${d.workerId || ""}</td>
+            <td>${d.user || ""}</td>
+            <td>${d.ip || ""}</td>
+            <td>${d.currentEarnings || ""}</td>
+            <td>${d.bankAccount || ""}</td>
+            <td>${d.nextTransferDate || ""}</td>
+            <td>${d.lastMonthTransfer || ""}</td>
+            <td style="color:${d.alert ? 'red':'green'}">${d.alert || "✅ OK"}</td>
+            <td>${d.timestamp?.toDate ? d.timestamp.toDate().toLocaleString() : d.timestamp || ""}</td>`;
+          tbody.appendChild(tr);
+        });
+        loadStatus.textContent = "✅ Data loaded successfully.";
+      } catch (err) {
+        loadStatus.textContent = "❌ Firestore fetch error: " + err.message;
+        loadStatus.style.color = "red";
+      }
+    }
 
-  document.getElementById("csvExport").onclick = () => {
-    const csv = [...document.querySelectorAll("#tbl tr")]
-      .map(r => [...r.children].map(c => `"${c.innerText}"`).join(","))
-      .join("\n");
-    const blob = new Blob([csv], { type: "text/csv" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "earnings_snapshot.csv";
-    a.click();
-  };
-}
-</script>
+    document.getElementById("csvExport").onclick = () => {
+      const rows = [...document.querySelectorAll("table tr")]
+        .map(r => [...r.children].map(c => `"${c.innerText}"`).join(","))
+        .join("\n");
+      const blob = new Blob([rows], { type: "text/csv" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "earnings_logs.csv";
+      a.click();
+    };
+  </script>
 </body>
 </html>
