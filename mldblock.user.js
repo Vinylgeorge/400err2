@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         🛑 Block MLDataLabeler - Data labeling: European Mexican Spanish
+// @name         🛑 Block MLDataLabeler - Multi Project Auto Block
 // @namespace    ab2soft.block
-// @version      1.1
-// @description  Hide or auto-return all HITs from MLDataLabeler with title containing "Data labeling: European Mexican Spanish"
+// @version      2.0
+// @description  Automatically hide or auto-return MLDataLabeler HITs from multiple blocked project URLs
 // @author       AB2soft
 // @match        https://worker.mturk.com/*
 // @grant        none
@@ -11,37 +11,49 @@
 (function() {
   'use strict';
 
-  const BLOCKED_REQUESTER = "MLDataLabeler";
-  const TITLE_KEYWORD = "Data labeling: European Mexican Spanish";
+  // === 🧱 LIST OF BLOCKED PROJECT IDS ===
+  const BLOCKED_PROJECTS = [
+    "3QYV7EF3Q76O47X7VQSRUYM26GOLKK", // Data labeling: European Mexican Spanish
+    "3M35MA94JZXXH21MMQIOJ7HR2SAONX",  // Example future MLDataLabeler task
+    "3HYV4299H1KPY0N2NAXAGGZEY0HE8X"  // Another clone project (optional)
+  ];
 
-  // Hide matching HITs in search/queue pages
+  // === 🧩 Hide blocked HITs from search/queue results ===
   function hideBlockedHits() {
-    document.querySelectorAll("tr.table-row, li[data-reactid], div[data-react-class]").forEach(el => {
-      const text = el.innerText || "";
-      if (text.includes(BLOCKED_REQUESTER) && text.includes(TITLE_KEYWORD)) {
-        el.style.display = "none";
-        el.style.background = "#ffe6e6";
-        console.log("🚫 Blocked MLDataLabeler - Data labeling: European Mexican Spanish HIT hidden.");
+    document.querySelectorAll("a[href*='/projects/']").forEach(link => {
+      for (const projectId of BLOCKED_PROJECTS) {
+        if (link.href.includes(projectId)) {
+          const row = link.closest("tr, li, div");
+          if (row && row.style.display !== "none") {
+            row.style.display = "none";
+            row.style.background = "#ffe6e6";
+            console.log(`🚫 Blocked and hidden HIT from project ${projectId}`);
+          }
+        }
       }
     });
   }
 
-  // Auto-return if opened directly
+  // === 🧠 Auto-return if a blocked HIT page is opened ===
   function autoReturnBlockedHit() {
-    const bodyText = document.body.innerText || "";
-    if (bodyText.includes(BLOCKED_REQUESTER) && bodyText.includes(TITLE_KEYWORD)) {
-      console.warn("🛑 Auto-returning MLDataLabeler - Data labeling: European Mexican Spanish HIT...");
-      const btn = [...document.querySelectorAll("button, input[type=submit]")]
-        .find(b => /return/i.test(b.textContent || b.value));
-      if (btn) btn.click();
+    for (const projectId of BLOCKED_PROJECTS) {
+      if (window.location.href.includes(projectId)) {
+        console.warn(`🛑 Auto-returning HIT from blocked project ${projectId}`);
+        const btn = [...document.querySelectorAll("button, input[type=submit]")]
+          .find(b => /return/i.test(b.textContent || b.value));
+        if (btn) {
+          btn.click();
+          console.log(`↩️ Returned HIT from ${projectId}`);
+        }
+      }
     }
   }
 
-  // Watch for dynamically loaded pages
+  // === 🕵️‍♂️ Observe dynamic page updates (React/SPA) ===
   const observer = new MutationObserver(hideBlockedHits);
   observer.observe(document.body, { childList: true, subtree: true });
 
-  // Run immediately
+  // === 🔁 Run immediately at load ===
   hideBlockedHits();
   autoReturnBlockedHit();
 })();
