@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         🛑 Block MLDataLabeler - Multi Project Auto Block (Extended)
 // @namespace    ab2soft.block
-// @version      2.2
+// @version      2.5
 // @description  Automatically hide or auto-return MLDataLabeler HITs from multiple blocked project URLs
 // @author       AB2soft
 // @match        https://worker.mturk.com/*
@@ -10,14 +10,12 @@
 
 (function() {
   'use strict';
-
   // === 🧱 LIST OF BLOCKED PROJECT IDS ===
   const BLOCKED_PROJECTS = [
     "3QYV7EF3Q76O47X7VQSRUYM26GOLKK", // Data labeling: European Mexican Spanish
     "3HYV4299H1KPY0N2NAXAGGZEY0HE8X", // Another clone project
     "3M35MA94JZXXH21MMQIOJ7HR2SAONX"  // ✅ New project you asked to remove
   ];
-
   // === 🧩 Hide blocked HITs from search/queue results ===
   function hideBlockedHits() {
     document.querySelectorAll("a[href*='/projects/']").forEach(link => {
