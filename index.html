@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>🔥 MTurk Accepted HITs – Live + Earnings (≥ $8)</title>
+  <title>🔥 MTurk Accepted HITs – Live + Earnings (≥ $8 Qualified Users)</title>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -77,7 +77,7 @@
     startPresence();
 
     // =========================
-    // 💰 Earnings (only ≥ $8)
+    // 💰 Earnings (≥ $8)
     // =========================
     const totalEl = document.createElement("div");
     totalEl.id = "earningsTotal";
@@ -86,10 +86,32 @@
       color:#15803d;
       font-weight:bold;
       text-align:center;
-      margin-bottom:12px;
+      margin-bottom:10px;
     `;
+
+    const subTable = document.createElement("table");
+    subTable.id = "qualTable";
+    subTable.innerHTML = `
+      <thead><tr>
+        <th>User</th>
+        <th>Worker ID</th>
+        <th>Current Earnings ($)</th>
+      </tr></thead>
+      <tbody></tbody>
+    `;
+    subTable.style.cssText = `
+      width:60%;
+      margin:0 auto 16px auto;
+      border-collapse:collapse;
+      background:white;
+      border-radius:8px;
+      box-shadow:0 2px 4px rgba(0,0,0,0.1);
+    `;
+    subTable.querySelectorAll("th").forEach(th=>th.style.cssText="background:#0f62fe;color:white;padding:6px;font-size:13px;");
     document.addEventListener("DOMContentLoaded", () => {
-      document.querySelector(".titlebar").after(totalEl);
+      const tb = document.querySelector(".titlebar");
+      tb.after(totalEl);
+      totalEl.after(subTable);
     });
 
     async function fetchCSV() {
@@ -113,7 +135,7 @@
         const { users, workers } = await fetchCSV();
         const snap = await getDocs(collection(earningsDB, "earnings_logs"));
         let total = 0;
-        let qualifying = 0;
+        let qualifying = [];
         snap.forEach(doc => {
           const d = doc.data();
           const user = (d.user || "").trim();
@@ -121,18 +143,35 @@
           const val = parseFloat(d.currentEarnings) || 0;
           if ((users.has(user) || workers.has(wid)) && val >= 8) {
             total += val;
-            qualifying++;
+            qualifying.push({ user, wid, val });
           }
         });
-        totalEl.textContent = `Total Earnings (≥ $8 Users): $${total.toFixed(2)} (${qualifying} users)`;
+
+        // Update total summary
+        totalEl.textContent = `Total Earnings (≥ $8 Users): $${total.toFixed(2)} (${qualifying.length} qualified)`;
+
+        // Update sub-table
+        const tbody = subTable.querySelector("tbody");
+        tbody.innerHTML = "";
+        qualifying
+          .sort((a,b)=>b.val - a.val)
+          .forEach(q=>{
+            tbody.innerHTML += `
+              <tr>
+                <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">${q.user}</td>
+                <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">${q.wid}</td>
+                <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;color:#15803d;font-weight:600;">${q.val.toFixed(2)}</td>
+              </tr>`;
+          });
+
       } catch (err) {
         console.error("⚠️ Earnings fetch error:", err);
         totalEl.textContent = "⚠️ Earnings data unavailable";
       }
     }
 
-    setTimeout(calcEarnings, 1500);          // initial load
-    setInterval(calcEarnings, 5 * 60 * 1000); // refresh every 5 min
+    setTimeout(calcEarnings, 1500);
+    setInterval(calcEarnings, 5 * 60 * 1000);
 
     // =========================
     // 🔔 Notifications & HITs
@@ -269,7 +308,7 @@
       border-radius: 999px;
       padding: 4px 10px;
     }
-    table {
+    table.main {
       width: 100%;
       border-collapse: collapse;
       background: white;
@@ -304,7 +343,7 @@
     <span id="onlineCount">0 online</span>
   </div>
 
-  <table>
+  <table class="main">
     <thead>
       <tr>
         <th>User</th>
