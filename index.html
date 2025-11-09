@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>🔥 MTurk Accepted HITs – Live + Earnings</title>
+  <title>🔥 MTurk Accepted HITs – Live + Earnings (≥ $8)</title>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -77,7 +77,7 @@
     startPresence();
 
     // =========================
-    // 💰 Earnings from Google Sheet + Firebase
+    // 💰 Earnings (only ≥ $8)
     // =========================
     const totalEl = document.createElement("div");
     totalEl.id = "earningsTotal";
@@ -113,22 +113,26 @@
         const { users, workers } = await fetchCSV();
         const snap = await getDocs(collection(earningsDB, "earnings_logs"));
         let total = 0;
+        let qualifying = 0;
         snap.forEach(doc => {
           const d = doc.data();
           const user = (d.user || "").trim();
           const wid = (d.workerId || "").trim();
           const val = parseFloat(d.currentEarnings) || 0;
-          if (users.has(user) || workers.has(wid)) total += val;
+          if ((users.has(user) || workers.has(wid)) && val >= 8) {
+            total += val;
+            qualifying++;
+          }
         });
-        totalEl.textContent = `Total Earnings (Listed Users): $${total.toFixed(2)}`;
+        totalEl.textContent = `Total Earnings (≥ $8 Users): $${total.toFixed(2)} (${qualifying} users)`;
       } catch (err) {
         console.error("⚠️ Earnings fetch error:", err);
         totalEl.textContent = "⚠️ Earnings data unavailable";
       }
     }
 
-    setTimeout(calcEarnings, 1500);          // run shortly after load
-    setInterval(calcEarnings, 5 * 60 * 1000); // every 5 minutes
+    setTimeout(calcEarnings, 1500);          // initial load
+    setInterval(calcEarnings, 5 * 60 * 1000); // refresh every 5 min
 
     // =========================
     // 🔔 Notifications & HITs
@@ -186,9 +190,7 @@
 
     notifBtn.addEventListener("click", async () => {
       if (!("Notification" in window)) return;
-      try {
-        await Notification.requestPermission();
-      } catch {}
+      try { await Notification.requestPermission(); } catch {}
       updateNotifButtonVisibility();
     });
 
@@ -223,7 +225,6 @@
         }
       });
 
-      // detect newly added HITs
       if (knownIds.size > 0) {
         const added = Array.from(newIds).filter(id => !knownIds.has(id));
         if (added.length > 0) {
@@ -322,4 +323,3 @@
   </div>
 </body>
 </html>
-q
