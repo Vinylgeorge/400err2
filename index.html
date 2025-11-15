@@ -15,98 +15,65 @@
     color: #0f62fe;
     margin-bottom: 20px;
   }
-  section {
+  .card {
     background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     padding: 16px;
-    margin-bottom: 24px;
+    border-radius: 10px;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
   }
-  .team-link {
-    color: #0f62fe;
-    cursor: pointer;
+  .total-box {
+    font-size: 22px;
     font-weight: bold;
-    text-decoration: underline;
+    color: #0f62fe;
+    text-align: center;
+    margin-bottom: 20px;
   }
-  .team-link:hover {
-    color: #2563eb;
-  }
-  #summaryTable th, #summaryTable td {
-    padding: 8px 10px;
-    border-bottom: 1px solid #e5e7eb;
-  }
-  #summaryTable th {
-    background: #0f62fe;
-    color: white;
-  }
-  .hidden { display: none; }
-  #detailsSection table {
-    width: 100%;
-    border-collapse: collapse;
+  .team-list {
     margin-top: 10px;
   }
-  #detailsSection th, #detailsSection td {
-    padding: 6px 8px;
-    border-bottom: 1px solid #e5e7eb;
+  .team-item {
+    background: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: 0.2s;
   }
-  #detailsSection th {
-    background: #0f62fe;
-    color: white;
+  .team-item:hover {
+    background: #e0f2fe;
+    border-color: #0ea5e9;
+  }
+  .team-name {
+    font-size: 18px;
+    color: #0f62fe;
+  }
+  .team-earn {
+    font-size: 16px;
+    color: #065f46;
+    font-weight: bold;
   }
 </style>
 </head>
 <body>
 
-<h1>📊 AB2soft Earnings Summary</h1>
+<h1>📊 AB2soft Admin Summary</h1>
 
-<!-- 🔹 SUMMARY SECTION -->
-<section id="summarySection">
-  <h2>💰 Summary</h2>
-  <div id="totalEarnings" style="font-size:18px;font-weight:bold;color:#15803d;">
-    Total Earnings (All Teams): $0.00
-  </div>
-  <table id="summaryTable">
-    <thead>
-      <tr>
-        <th>Team</th>
-        <th>Total Earnings ($)</th>
-        <th>Members</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</section>
+<div class="card">
+  <div id="totalEarnings" class="total-box">Your Total Earnings: $0.00</div>
+</div>
 
-<!-- 🔹 DETAILED TEAM SECTION -->
-<section id="detailsSection" class="hidden">
-  <h2 id="teamHeader">Team Details</h2>
-  <button onclick="hideDetails()" style="margin-bottom:10px;">⬅ Back to Summary</button>
-  <table id="teamTable">
-    <thead>
-      <tr>
-        <th>SERVER IP</th>
-        <th>USERNAME</th>
-        <th>WORKER ID</th>
-        <th>Current Earnings</th>
-        <th>Last Month</th>
-        <th>Last Transfer ($)</th>
-        <th>Last Transfer Date</th>
-        <th>Next Transfer Date</th>
-        <th>Transfer Method</th>
-        <th>IP</th>
-        <th>Alert</th>
-        <th>Timestamp (BD)</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-</section>
+<div class="card">
+  <h2>🧑‍🤝‍🧑 Team Earnings</h2>
+  <div id="teamList" class="team-list">Loading…</div>
+</div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// ✅ Firebase Config
+// Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyBZKAO1xSMUWBWHusx8sfZGs0yd3QIKOqU",
   authDomain: "hasibteam1-10981.firebaseapp.com",
@@ -119,92 +86,80 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Time formatter (Bangladesh)
-function formatBDTime(t) {
-  try {
-    const d = new Date(t.seconds ? t.seconds * 1000 : new Date(t).getTime());
-    return d.toLocaleString("en-BD", { timeZone: "Asia/Dhaka", hour12: true });
-  } catch { return "—"; }
+let earningsByTeam = {};
+let VALID_TEAMS = new Set(); // Teams from spreadsheet
+
+// Load valid team list from Google Sheet
+const SHEET_CSV = "https://docs.google.com/spreadsheets/d/1Jmx4qVw9J_CQNZPuq_hCL08lZzSW2vO4rEl9z9uO5sU/export?format=csv&gid=0";
+
+// Load valid teams (SERVER IP, TEAM, USERNAME, WORKER ID, etc.)
+async function loadValidTeams() {
+  const resp = await fetch(SHEET_CSV);
+  const text = await resp.text();
+  const rows = text.split("\n").map(r => r.split(","));
+  const headers = rows.shift();
+  const teamIndex = headers.findIndex(h => h.trim().toLowerCase() === "team");
+
+  rows.forEach(row => {
+    const t = (row[teamIndex] || "").trim();
+    if (t && t.toLowerCase() !== "unknown" && t.toLowerCase() !== "undefined" && t !== "N/A") {
+      VALID_TEAMS.add(t);
+    }
+  });
 }
 
-let allData = [];
+// After loading valid teams → load Firestore
+await loadValidTeams();
 
 onSnapshot(collection(db, "earnings_logs"), (snap) => {
-  allData = [];
+  earningsByTeam = {};
+
   snap.forEach(docSnap => {
-    allData.push(docSnap.data());
+    const d = docSnap.data();
+    const team = (d["TEAM"] || "").trim();
+
+    // ❌ Skip unknown or invalid teams
+    if (!team || !VALID_TEAMS.has(team)) return;
+
+    const cur = parseFloat(d.currentEarnings || 0);
+
+    if (!earningsByTeam[team]) earningsByTeam[team] = 0;
+    earningsByTeam[team] += cur;
   });
-  renderSummary();
+
+  updateUI();
 });
 
-function renderSummary() {
-  const tbody = document.querySelector("#summaryTable tbody");
-  const totalElem = document.querySelector("#totalEarnings");
-  tbody.innerHTML = "";
+// Update summary UI
+function updateUI() {
+  const totalElem = document.getElementById("totalEarnings");
+  const teamList = document.getElementById("teamList");
 
-  const teamTotals = {};
-  let grandTotal = 0;
+  let totalAllTeams = 0;
+  teamList.innerHTML = "";
 
-  for (const d of allData) {
-    const team = d["TEAM"] || "Unknown";
-    const earnings = parseFloat(d.currentEarnings || 0);
-    grandTotal += earnings;
-    if (!teamTotals[team]) teamTotals[team] = { total: 0, members: 0 };
-    teamTotals[team].total += earnings;
-    teamTotals[team].members++;
-  }
+  Object.keys(earningsByTeam).forEach(team => {
+    const teamEarn = earningsByTeam[team];
+    totalAllTeams += teamEarn;
 
-  totalElem.textContent = `Total Earnings (All Teams): $${grandTotal.toFixed(2)}`;
-
-  Object.entries(teamTotals).forEach(([team, data]) => {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td><span class="team-link" onclick="showDetails('${team}')">${team}</span></td>
-      <td>$${data.total.toFixed(2)}</td>
-      <td>${data.members}</td>
+    const div = document.createElement("div");
+    div.className = "team-item";
+    div.innerHTML = `
+      <div class="team-name">${team}</div>
+      <div class="team-earn">$${teamEarn.toFixed(2)}</div>
     `;
-    tbody.appendChild(row);
+
+    // Clicking opens full detailed page with filter
+    div.onclick = () => {
+      window.location.href = `./details.html?team=${encodeURIComponent(team)}`;
+    };
+
+    teamList.appendChild(div);
   });
+
+  totalElem.textContent = `Your Total Earnings: $${totalAllTeams.toFixed(2)}`;
 }
-
-window.showDetails = (team) => {
-  const detailSection = document.querySelector("#detailsSection");
-  const summarySection = document.querySelector("#summarySection");
-  const teamHeader = document.querySelector("#teamHeader");
-  const tbody = document.querySelector("#teamTable tbody");
-  teamHeader.textContent = `Team: ${team}`;
-  summarySection.classList.add("hidden");
-  detailSection.classList.remove("hidden");
-  tbody.innerHTML = "";
-
-  const teamData = allData.filter(d => (d["TEAM"] || "") === team);
-  for (const d of teamData) {
-    const alertHTML = d.alert?.trim()
-      ? `<span style="color:#dc2626;font-weight:600;">${d.alert}</span>`
-      : `<span style="color:#16a34a;">✔ OK</span>`;
-    tbody.innerHTML += `
-      <tr>
-        <td>${d["SERVER IP"] || ""}</td>
-        <td>${d["USERNAME"] || ""}</td>
-        <td>${d["WORKER ID"] || ""}</td>
-        <td>${d.currentEarnings || ""}</td>
-        <td>${d.lastMonthEarnings || ""}</td>
-        <td>${d.lastTransferAmount || ""}</td>
-        <td>${d.lastTransferDate || ""}</td>
-        <td>${d.nextTransferDate || ""}</td>
-        <td>${d.bankAccount || ""}</td>
-        <td>${d.ip || ""}</td>
-        <td>${alertHTML}</td>
-        <td>${formatBDTime(d.timestamp)}</td>
-      </tr>
-    `;
-  }
-};
-
-window.hideDetails = () => {
-  document.querySelector("#detailsSection").classList.add("hidden");
-  document.querySelector("#summarySection").classList.remove("hidden");
-};
 </script>
+
 </body>
 </html>
