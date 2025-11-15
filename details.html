@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>📄 Team Report</title>
+<style>
+  body {
+    font-family: "Segoe UI", sans-serif;
+    background: #f8fafc;
+    color: #111827;
+    padding: 20px;
+  }
+  h1 {
+    text-align: center;
+    color: #0f62fe;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+  }
+  section {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    padding: 16px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  th, td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+  }
+  th {
+    background: #0f62fe;
+    color: white;
+  }
+  tr:hover { background: #f1f5f9; }
+  .back-btn {
+    padding: 8px 12px;
+    background: #0f62fe;
+    color: white;
+    font-size: 14px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  .back-btn:hover { background: #1e40af; }
+  .ip-alert {
+    color: #dc2626;
+    font-weight: 600;
+  }
+  .ip-ok {
+    color: #15803d;
+  }
+</style>
+</head>
+<body>
+
+<button class="back-btn" onclick="window.location.href='index.html'">⬅ Back</button>
+<h1 id="teamTitle">TEAM REPORT</h1>
+
+<section>
+  <table>
+    <thead>
+      <tr>
+        <th>SERVER IP</th>
+        <th>TEAM</th>
+        <th>USERNAME</th>
+        <th>WORKER ID</th>
+        <th>Current Earnings</th>
+        <th>Last Month</th>
+        <th>Last Transfer ($)</th>
+        <th>Last Transfer Date</th>
+        <th>Next Transfer Date</th>
+        <th>Transfer Method</th>
+        <th>IP</th>
+        <th>Alert</th>
+        <th>Timestamp (Bangladesh)</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</section>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// Firebase Config
+const firebaseConfig = {
+  apiKey: "AIzaSyBZKAO1xSMUWBWHusx8sfZGs0yd3QIKOqU",
+  authDomain: "hasibteam1-10981.firebaseapp.com",
+  projectId: "hasibteam1-10981",
+  storageBucket: "hasibteam1-10981.firebasestorage.app",
+  messagingSenderId: "537251545985",
+  appId: "1:537251545985:web:05b1667f9ec7eb6258de80"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// Read team parameter from URL
+const urlParams = new URLSearchParams(window.location.search);
+const teamParam = urlParams.get("team");
+document.getElementById("teamTitle").textContent = `TEAM: ${teamParam}`;
+
+// Time formatting (Bangladesh)
+function getTimestampMillis(t) {
+  try {
+    if (!t) return 0;
+    if (t.seconds) return t.seconds * 1000;
+    if (typeof t === "string") return new Date(t).getTime();
+    return 0;
+  } catch { return 0; }
+}
+function formatBD(t) {
+  const ms = getTimestampMillis(t);
+  if (!ms) return "—";
+  const date = new Date(ms);
+  return date.toLocaleString("en-BD", {
+    timeZone: "Asia/Dhaka",
+    hour12: true,
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit", second: "2-digit"
+  });
+}
+
+// Load filtered team data
+onSnapshot(collection(db, "earnings_logs"), (snap) => {
+  const tbody = document.getElementById("tableBody");
+  tbody.innerHTML = "";
+
+  snap.forEach(docSnap => {
+    const d = docSnap.data();
+    if ((d["TEAM"] || "").trim() !== teamParam) return;
+
+    const alertHTML = d.alert?.trim()
+      ? `<span style="color:#dc2626;font-weight:600;">${d.alert}</span>`
+      : `<span style="color:#16a34a;">✔ OK</span>`;
+
+    const ipClass = d.alert?.includes("IP Changed") ? "ip-alert" : "ip-ok";
+
+    tbody.innerHTML += `
+      <tr>
+        <td>${d["SERVER IP"] || ""}</td>
+        <td>${d["TEAM"] || ""}</td>
+        <td>${d["USERNAME"] || ""}</td>
+        <td>${d["WORKER ID"] || ""}</td>
+        <td>${d.currentEarnings || ""}</td>
+        <td>${d.lastMonthEarnings || ""}</td>
+        <td>${d.lastTransferAmount || ""}</td>
+        <td>${d.lastTransferDate || ""}</td>
+        <td>${d.nextTransferDate || ""}</td>
+        <td>${d.bankAccount || ""}</td>
+        <td class="${ipClass}">${d.ip || ""}</td>
+        <td>${alertHTML}</td>
+        <td>${formatBD(d.timestamp)}</td>
+      </tr>`;
+  });
+});
+</script>
+
+</body>
+</html>
