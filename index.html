@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>📄 Team Report</title>
+<title>📊 Team Summary – AB2soft</title>
+
 <style>
   body {
     font-family: "Segoe UI", sans-serif;
@@ -13,93 +14,70 @@
   h1 {
     text-align: center;
     color: #0f62fe;
-    margin-bottom: 20px;
-    text-transform: uppercase;
+    margin-bottom: 25px;
+    font-size: 28px;
   }
   section {
     background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
     padding: 16px;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    max-width: 900px;
+    margin: auto;
   }
   table {
     width: 100%;
     border-collapse: collapse;
+    margin-top: 15px;
   }
   th, td {
-    padding: 8px 10px;
+    padding: 10px 12px;
     border-bottom: 1px solid #e5e7eb;
-    text-align: left;
+    font-size: 15px;
   }
   th {
     background: #0f62fe;
     color: white;
+    text-align: left;
   }
-  tr:hover { background: #f1f5f9; }
-  .back-btn, .download {
-    padding: 8px 12px;
-    background: #0f62fe;
-    color: white;
-    font-size: 14px;
-    border: none;
-    border-radius: 6px;
+  tr:hover {
+    background: #eef2ff;
     cursor: pointer;
-    margin-right: 8px;
   }
-  .download {
-    background: #16a34a;
-  }
-  .download:hover { background: #15803d; }
-  .back-btn:hover { background: #1e40af; }
-  .ip-alert {
-    color: #dc2626;
-    font-weight: 600;
-  }
-  .ip-ok {
+  #total {
+    font-size: 20px;
+    font-weight: bold;
     color: #15803d;
+    margin-bottom: 10px;
   }
 </style>
 </head>
+
 <body>
-
-<button class="back-btn" onclick="window.location.href='index.html'">⬅ Back</button>
-
-<h1 id="teamTitle">TEAM REPORT</h1>
-
-<!-- EXPORT BUTTONS -->
-<div style="margin-bottom: 10px;">
-  <button class="download" onclick="downloadData('csv')">⬇️ Download CSV</button>
-  <button class="download" onclick="downloadData('xlsx')">⬇️ Download Excel</button>
-</div>
+<h1>📊 AB2soft – Team Earnings Summary</h1>
 
 <section>
+  <div id="total">Total Earnings: $0</div>
+
   <table>
     <thead>
       <tr>
-        <th>SERVER IP</th>
-        <th>TEAM</th>
-        <th>USERNAME</th>
-        <th>WORKER ID</th>
-        <th>Current Earnings</th>
-        <th>Last Month</th>
-        <th>Last Transfer ($)</th>
-        <th>Last Transfer Date</th>
-        <th>Next Transfer Date</th>
-        <th>Transfer Method</th>
-        <th>IP</th>
-        <th>Alert</th>
-        <th>Timestamp (Bangladesh)</th>
+        <th>Team</th>
+        <th>Workers</th>
+        <th>Total Earnings ($)</th>
       </tr>
     </thead>
-    <tbody id="tableBody"></tbody>
+    <tbody id="teamBody"></tbody>
   </table>
 </section>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+/* ------------------ FIREBASE ------------------ */
+import { initializeApp } 
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, onSnapshot } 
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyBZKAO1xSMUWBWHusx8sfZGs0yd3QIKOqU",
   authDomain: "hasibteam1-10981.firebaseapp.com",
@@ -112,124 +90,86 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const urlParams = new URLSearchParams(window.location.search);
-const teamParam = urlParams.get("team");
-document.getElementById("teamTitle").textContent = `TEAM: ${teamParam}`;
-
-let tableData = [];
-
-// Time formatting (Bangladesh)
-function getTimestampMillis(t) {
-  try {
-    if (!t) return 0;
-    if (t.seconds) return t.seconds * 1000;
-    if (typeof t === "string") return new Date(t).getTime();
-    return 0;
-  } catch { return 0; }
-}
-function formatBD(t) {
-  const ms = getTimestampMillis(t);
-  if (!ms) return "—";
-  const date = new Date(ms);
-  return date.toLocaleString("en-BD", {
-    timeZone: "Asia/Dhaka",
-    hour12: true,
-    day: "2-digit", month: "2-digit", year: "numeric",
-    hour: "2-digit", minute: "2-digit", second: "2-digit"
-  });
+/* ------------------ HELPERS ------------------ */
+function parseBDdate(str) {
+  if (!str) return null;
+  const [mm, dd, yyyy] = str.split("/").map(n => parseInt(n.trim()));
+  if (!mm || !dd || !yyyy) return null;
+  return new Date(yyyy, mm - 1, dd);
 }
 
-// Load team logs
+function isCurrentMonth(dateObj) {
+  if (!dateObj) return false;
+  const nowBD = new Date().toLocaleString("en-US", { timeZone: "Asia/Dhaka" });
+  const now = new Date(nowBD);
+
+  return (
+    dateObj.getMonth() === now.getMonth() &&
+    dateObj.getFullYear() === now.getFullYear()
+  );
+}
+
+/* ------------------ MAIN SNAPSHOT ------------------ */
 onSnapshot(collection(db, "earnings_logs"), (snap) => {
-  const tbody = document.getElementById("tableBody");
-  tbody.innerHTML = "";
-  tableData = [];
+  const teamMap = {};
+  let totalAll = 0;
 
   snap.forEach(docSnap => {
     const d = docSnap.data();
-    if ((d["TEAM"] || "").trim() !== teamParam) return;
 
-    tableData.push({
-      serverIp: d["SERVER IP"] || "",
-      team: d["TEAM"] || "",
-      username: d["USERNAME"] || "",
-      workerId: d["WORKER ID"] || "",
-      currentEarnings: d.currentEarnings || "",
-      lastMonthEarnings: d.lastMonthEarnings || "",
-      lastTransferAmount: d.lastTransferAmount || "",
-      lastTransferDate: d.lastTransferDate || "",
-      nextTransferDate: d.nextTransferDate || "",
-      bankAccount: d.bankAccount || "",
-      ip: d.ip || "",
-      alert: d.alert || "",
-      timestamp: formatBD(d.timestamp)
-    });
+    const team = (d["TEAM"] || "").trim();
+    if (!team || team.toUpperCase() === "UNKNOWN") return;
 
-    const alertHTML = d.alert?.trim()
-      ? `<span style="color:#dc2626;font-weight:600;">${d.alert}</span>`
-      : `<span style="color:#16a34a;">✔ OK</span>`;
+    const curr = parseFloat(d.currentEarnings || 0);
+    const lastAmt = parseFloat(d.lastTransferAmount || 0);
+    const lastDateObj = parseBDdate(d.lastTransferDate);
 
-    const ipClass = d.alert?.includes("IP Changed") ? "ip-alert" : "ip-ok";
+    let workerTotal = curr;
 
-    tbody.innerHTML += `
-      <tr>
-        <td>${d["SERVER IP"] || ""}</td>
-        <td>${d["TEAM"] || ""}</td>
-        <td>${d["USERNAME"] || ""}</td>
-        <td>${d["WORKER ID"] || ""}</td>
-        <td>${d.currentEarnings || ""}</td>
-        <td>${d.lastMonthEarnings || ""}</td>
-        <td>${d.lastTransferAmount || ""}</td>
-        <td>${d.lastTransferDate || ""}</td>
-        <td>${d.nextTransferDate || ""}</td>
-        <td>${d.bankAccount || ""}</td>
-        <td class="${ipClass}">${d.ip || ""}</td>
-        <td>${alertHTML}</td>
-        <td>${formatBD(d.timestamp)}</td>
-      </tr>`;
+    if (isCurrentMonth(lastDateObj)) {
+      workerTotal += lastAmt;
+    }
+
+    if (!teamMap[team]) {
+      teamMap[team] = { workers: 0, total: 0 };
+    }
+
+    teamMap[team].workers++;
+    teamMap[team].total += workerTotal;
+
+    totalAll += workerTotal;
   });
+
+  // Convert to array
+  const list = Object.keys(teamMap).map(team => ({
+    team,
+    workers: teamMap[team].workers,
+    total: teamMap[team].total
+  }));
+
+  // Sort by highest earnings
+  list.sort((a, b) => b.total - a.total);
+
+  // Render
+  const tbody = document.getElementById("teamBody");
+  tbody.innerHTML = "";
+
+  list.forEach(item => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${item.team}</td>
+      <td>${item.workers}</td>
+      <td>$${item.total.toFixed(2)}</td>
+    `;
+    tr.onclick = () => {
+      window.location.href = `details.html?team=${encodeURIComponent(item.team)}`;
+    };
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById("total").textContent =
+    `Total Earnings: $${totalAll.toFixed(2)}`;
 });
-
-// EXPORT FUNCTION
-window.downloadData = (type) => {
-  if (!tableData.length) {
-    alert("No data to export!");
-    return;
-  }
-
-  const headers = [
-    "SERVER IP","TEAM","USERNAME","WORKER ID","Current Earnings",
-    "Last Month","Last Transfer ($)","Last Transfer Date",
-    "Next Transfer Date","Transfer Method","IP","Alert","Timestamp (Bangladesh)"
-  ];
-
-  const rows = tableData.map(d => [
-    d.serverIp,d.team,d.username,d.workerId,d.currentEarnings,
-    d.lastMonthEarnings,d.lastTransferAmount,d.lastTransferDate,
-    d.nextTransferDate,d.bankAccount,d.ip,d.alert,d.timestamp
-  ]);
-
-  if (type === "csv") {
-    const csv = [headers, ...rows]
-      .map(r => r.map(x => `"${String(x).replace(/"/g,'""')}"`).join(","))
-      .join("\n");
-
-    const blob = new Blob([csv], { type: "text/csv" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `${teamParam}_Report.csv`;
-    a.click();
-  }
-
-  if (type === "xlsx") {
-    import("https://cdn.sheetjs.com/xlsx-0.19.3/package/xlsx.mjs").then(XLSX => {
-      const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, `${teamParam}`);
-      XLSX.writeFile(wb, `${teamParam}_Report.xlsx`);
-    });
-  }
-};
 </script>
 
 </body>
