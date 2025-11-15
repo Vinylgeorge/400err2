@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>📊 AB2soft Summary Dashboard</title>
+<title>📄 Team Report</title>
 <style>
   body {
     font-family: "Segoe UI", sans-serif;
@@ -14,60 +14,74 @@
     text-align: center;
     color: #0f62fe;
     margin-bottom: 20px;
+    text-transform: uppercase;
   }
-  .card {
+  section {
     background: white;
-    padding: 16px;
-    border-radius: 10px;
-    box-shadow: 0 3px 6px rgba(0,0,0,0.1);
-    margin-bottom: 20px;
-  }
-  .total-box {
-    font-size: 22px;
-    font-weight: bold;
-    color: #0f62fe;
-    text-align: center;
-    margin-bottom: 20px;
-  }
-  .team-list {
-    margin-top: 10px;
-  }
-  .team-item {
-    background: #ffffff;
-    border: 1px solid #d1d5db;
     border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 10px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    padding: 16px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  th, td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #e5e7eb;
+    text-align: left;
+  }
+  th {
+    background: #0f62fe;
+    color: white;
+  }
+  tr:hover { background: #f1f5f9; }
+  .back-btn {
+    padding: 8px 12px;
+    background: #0f62fe;
+    color: white;
+    font-size: 14px;
+    border: none;
+    border-radius: 6px;
     cursor: pointer;
-    transition: 0.2s;
   }
-  .team-item:hover {
-    background: #e0f2fe;
-    border-color: #0ea5e9;
+  .back-btn:hover { background: #1e40af; }
+  .ip-alert {
+    color: #dc2626;
+    font-weight: 600;
   }
-  .team-name {
-    font-size: 18px;
-    color: #0f62fe;
-  }
-  .team-earn {
-    font-size: 16px;
-    color: #065f46;
-    font-weight: bold;
+  .ip-ok {
+    color: #15803d;
   }
 </style>
 </head>
 <body>
 
-<h1>📊 AB2soft Admin Summary</h1>
+<button class="back-btn" onclick="window.location.href='index.html'">⬅ Back</button>
+<h1 id="teamTitle">TEAM REPORT</h1>
 
-<div class="card">
-  <div id="totalEarnings" class="total-box">Your Total Earnings: $0.00</div>
-</div>
-
-<div class="card">
-  <h2>🧑‍🤝‍🧑 Team Earnings</h2>
-  <div id="teamList" class="team-list">Loading…</div>
-</div>
+<section>
+  <table>
+    <thead>
+      <tr>
+        <th>SERVER IP</th>
+        <th>TEAM</th>
+        <th>USERNAME</th>
+        <th>WORKER ID</th>
+        <th>Current Earnings</th>
+        <th>Last Month</th>
+        <th>Last Transfer ($)</th>
+        <th>Last Transfer Date</th>
+        <th>Next Transfer Date</th>
+        <th>Transfer Method</th>
+        <th>IP</th>
+        <th>Alert</th>
+        <th>Timestamp (Bangladesh)</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</section>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -86,79 +100,65 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-let earningsByTeam = {};
-let VALID_TEAMS = new Set(); // Teams from spreadsheet
+// Read team parameter from URL
+const urlParams = new URLSearchParams(window.location.search);
+const teamParam = urlParams.get("team");
+document.getElementById("teamTitle").textContent = `TEAM: ${teamParam}`;
 
-// Load valid team list from Google Sheet
-const SHEET_CSV = "https://docs.google.com/spreadsheets/d/1Jmx4qVw9J_CQNZPuq_hCL08lZzSW2vO4rEl9z9uO5sU/export?format=csv&gid=0";
-
-// Load valid teams (SERVER IP, TEAM, USERNAME, WORKER ID, etc.)
-async function loadValidTeams() {
-  const resp = await fetch(SHEET_CSV);
-  const text = await resp.text();
-  const rows = text.split("\n").map(r => r.split(","));
-  const headers = rows.shift();
-  const teamIndex = headers.findIndex(h => h.trim().toLowerCase() === "team");
-
-  rows.forEach(row => {
-    const t = (row[teamIndex] || "").trim();
-    if (t && t.toLowerCase() !== "unknown" && t.toLowerCase() !== "undefined" && t !== "N/A") {
-      VALID_TEAMS.add(t);
-    }
+// Time formatting (Bangladesh)
+function getTimestampMillis(t) {
+  try {
+    if (!t) return 0;
+    if (t.seconds) return t.seconds * 1000;
+    if (typeof t === "string") return new Date(t).getTime();
+    return 0;
+  } catch { return 0; }
+}
+function formatBD(t) {
+  const ms = getTimestampMillis(t);
+  if (!ms) return "—";
+  const date = new Date(ms);
+  return date.toLocaleString("en-BD", {
+    timeZone: "Asia/Dhaka",
+    hour12: true,
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit", second: "2-digit"
   });
 }
 
-// After loading valid teams → load Firestore
-await loadValidTeams();
-
+// Load filtered team data
 onSnapshot(collection(db, "earnings_logs"), (snap) => {
-  earningsByTeam = {};
+  const tbody = document.getElementById("tableBody");
+  tbody.innerHTML = "";
 
   snap.forEach(docSnap => {
     const d = docSnap.data();
-    const team = (d["TEAM"] || "").trim();
+    if ((d["TEAM"] || "").trim() !== teamParam) return;
 
-    // ❌ Skip unknown or invalid teams
-    if (!team || !VALID_TEAMS.has(team)) return;
+    const alertHTML = d.alert?.trim()
+      ? `<span style="color:#dc2626;font-weight:600;">${d.alert}</span>`
+      : `<span style="color:#16a34a;">✔ OK</span>`;
 
-    const cur = parseFloat(d.currentEarnings || 0);
+    const ipClass = d.alert?.includes("IP Changed") ? "ip-alert" : "ip-ok";
 
-    if (!earningsByTeam[team]) earningsByTeam[team] = 0;
-    earningsByTeam[team] += cur;
+    tbody.innerHTML += `
+      <tr>
+        <td>${d["SERVER IP"] || ""}</td>
+        <td>${d["TEAM"] || ""}</td>
+        <td>${d["USERNAME"] || ""}</td>
+        <td>${d["WORKER ID"] || ""}</td>
+        <td>${d.currentEarnings || ""}</td>
+        <td>${d.lastMonthEarnings || ""}</td>
+        <td>${d.lastTransferAmount || ""}</td>
+        <td>${d.lastTransferDate || ""}</td>
+        <td>${d.nextTransferDate || ""}</td>
+        <td>${d.bankAccount || ""}</td>
+        <td class="${ipClass}">${d.ip || ""}</td>
+        <td>${alertHTML}</td>
+        <td>${formatBD(d.timestamp)}</td>
+      </tr>`;
   });
-
-  updateUI();
 });
-
-// Update summary UI
-function updateUI() {
-  const totalElem = document.getElementById("totalEarnings");
-  const teamList = document.getElementById("teamList");
-
-  let totalAllTeams = 0;
-  teamList.innerHTML = "";
-
-  Object.keys(earningsByTeam).forEach(team => {
-    const teamEarn = earningsByTeam[team];
-    totalAllTeams += teamEarn;
-
-    const div = document.createElement("div");
-    div.className = "team-item";
-    div.innerHTML = `
-      <div class="team-name">${team}</div>
-      <div class="team-earn">$${teamEarn.toFixed(2)}</div>
-    `;
-
-    // Clicking opens full detailed page with filter
-    div.onclick = () => {
-      window.location.href = `./details.html?team=${encodeURIComponent(team)}`;
-    };
-
-    teamList.appendChild(div);
-  });
-
-  totalElem.textContent = `Your Total Earnings: $${totalAllTeams.toFixed(2)}`;
-}
 </script>
 
 </body>
