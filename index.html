@@ -1,364 +1,210 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>🔥 MTurk Accepted HITs – Live + Earnings (≥ $8 Qualified Users)</title>
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import {
-      getFirestore, collection, onSnapshot,
-      doc, setDoc, deleteDoc, serverTimestamp, getDocs
-    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-    // =========================
-    // 🔹 Firebase Config – HITs
-    // =========================
-    const firebaseConfig = {
-      apiKey: "AIzaSyC57W83XkxdvM2aMQK8GIRYR2SJH1ORdfQ",
-      authDomain: "mturk-tasks-72994.firebaseapp.com",
-      projectId: "mturk-tasks-72994",
-      storageBucket: "mturk-tasks-72994.firebasestorage.app",
-      messagingSenderId: "305467873275",
-      appId: "1:305467873275:web:7b96048865c5305df1dd5e"
-    };
-    const app = initializeApp(firebaseConfig);
-    const db  = getFirestore(app);
-
-    // =========================
-    // 🔹 Firebase Config – Earnings
-    // =========================
-    import { initializeApp as initEarningsApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    const earningsConfig = {
-      apiKey: "AIzaSyBTFpM3fs7kWBrZL4yOi9tquUTp1HhH7L8",
-      authDomain: "mturk-monitordeep.firebaseapp.com",
-      projectId: "mturk-monitordeep",
-      storageBucket: "mturk-monitordeep.firebasestorage.app",
-      messagingSenderId: "505786000194",
-      appId: "1:505786000194:web:40b9c9df75d3125f3a99cd"
-    };
-    const earningsApp = initEarningsApp(earningsConfig, "earningsApp");
-    const earningsDB  = getFirestore(earningsApp);
-
-    // =========================
-    // 🟢 Presence Tracking
-    // =========================
-    const ROOM = "index";
-    const HEARTBEAT_MS = 60_000;
-    const STALE_MS     = 90_000;
-
-    const onlineEl = document.querySelector("#onlineCount");
-    const presenceCol = collection(db, `rooms/${ROOM}/presence`);
-    const sid = crypto.randomUUID?.() ?? Math.random().toString(36).slice(2);
-    const meRef = doc(presenceCol, sid);
-
-    async function startPresence() {
-      setDoc(meRef, { since: serverTimestamp(), lastActive: serverTimestamp() }, { merge: true }).catch(()=>{});
-      const hb = setInterval(() => {
-        setDoc(meRef, { lastActive: serverTimestamp() }, { merge: true }).catch(()=>{});
-      }, HEARTBEAT_MS);
-
-      window.addEventListener("beforeunload", () => {
-        clearInterval(hb);
-        deleteDoc(meRef).catch(()=>{});
-      });
-
-      onSnapshot(presenceCol, (snap) => {
-        const now = Date.now();
-        let count = 0;
-        snap.forEach(d => {
-          const t = d.data()?.lastActive;
-          const ms = t?.toMillis?.() ?? (t ? Date.parse(t) : 0);
-          if (ms && (now - ms) <= STALE_MS) count++;
-        });
-        if (onlineEl) onlineEl.textContent = `${count} online`;
-      });
-    }
-    startPresence();
-
-    // =========================
-    // 💰 Earnings (≥ $8)
-    // =========================
-    const totalEl = document.createElement("div");
-    totalEl.id = "earningsTotal";
-    totalEl.style.cssText = `
-      font-size:16px;
-      color:#15803d;
-      font-weight:bold;
-      text-align:center;
-      margin-bottom:10px;
-    `;
-
-    const subTable = document.createElement("table");
-    subTable.id = "qualTable";
-    subTable.innerHTML = `
-      <thead><tr>
-        <th>User</th>
-        <th>Worker ID</th>
-        <th>Current Earnings ($)</th>
-      </tr></thead>
-      <tbody></tbody>
-    `;
-    subTable.style.cssText = `
-      width:60%;
-      margin:0 auto 16px auto;
-      border-collapse:collapse;
-      background:white;
-      border-radius:8px;
-      box-shadow:0 2px 4px rgba(0,0,0,0.1);
-    `;
-    subTable.querySelectorAll("th").forEach(th=>th.style.cssText="background:#0f62fe;color:white;padding:6px;font-size:13px;");
-    document.addEventListener("DOMContentLoaded", () => {
-      const tb = document.querySelector(".titlebar");
-      tb.after(totalEl);
-      totalEl.after(subTable);
-    });
-
-    async function fetchCSV() {
-      const res = await fetch("https://docs.google.com/spreadsheets/d/1mf2-AQ59CuboAWz8Fle3qXTFfAI3cnB7mrkqQF1lyCw/export?format=csv&gid=0");
-      const text = await res.text();
-      const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
-      const header = lines[0].split(",").map(h => h.trim().toLowerCase());
-      const users = new Set(), workers = new Set();
-      for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(",");
-        const userIdx = header.findIndex(h => h.includes("user"));
-        const workerIdx = header.findIndex(h => h.includes("worker"));
-        if (userIdx >= 0 && cols[userIdx]) users.add(cols[userIdx].trim());
-        if (workerIdx >= 0 && cols[workerIdx]) workers.add(cols[workerIdx].trim());
-      }
-      return { users, workers };
-    }
-
-    async function calcEarnings() {
-      try {
-        const { users, workers } = await fetchCSV();
-        const snap = await getDocs(collection(earningsDB, "earnings_logs"));
-        let total = 0;
-        let qualifying = [];
-        snap.forEach(doc => {
-          const d = doc.data();
-          const user = (d.user || "").trim();
-          const wid = (d.workerId || "").trim();
-          const val = parseFloat(d.currentEarnings) || 0;
-          if ((users.has(user) || workers.has(wid)) && val >= 8) {
-            total += val;
-            qualifying.push({ user, wid, val });
-          }
-        });
-
-        // Update total summary
-        totalEl.textContent = `Total Earnings (≥ $8 Users): $${total.toFixed(2)} (${qualifying.length} qualified)`;
-
-        // Update sub-table
-        const tbody = subTable.querySelector("tbody");
-        tbody.innerHTML = "";
-        qualifying
-          .sort((a,b)=>b.val - a.val)
-          .forEach(q=>{
-            tbody.innerHTML += `
-              <tr>
-                <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">${q.user}</td>
-                <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;">${q.wid}</td>
-                <td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;color:#15803d;font-weight:600;">${q.val.toFixed(2)}</td>
-              </tr>`;
-          });
-
-      } catch (err) {
-        console.error("⚠️ Earnings fetch error:", err);
-        totalEl.textContent = "⚠️ Earnings data unavailable";
-      }
-    }
-
-    setTimeout(calcEarnings, 1500);
-    setInterval(calcEarnings, 5 * 60 * 1000);
-
-    // =========================
-    // 🔔 Notifications & HITs
-    // =========================
-    const tableBody = document.querySelector("#hits-body");
-    const soundUrl  = "https://www.allbyjohn.com/sounds/mturkscanner/lessthan15Short.mp3";
-    let knownIds = new Set();
-
-    function playSound() {
-      const audio = new Audio(soundUrl);
-      audio.volume = 0.7;
-      audio.play().catch(e => console.warn("⚠️ Autoplay blocked:", e));
-    }
-
-    function renderTable(hits) {
-      tableBody.innerHTML = "";
-      hits.sort((a, b) => new Date(b.acceptedAt) - new Date(a.acceptedAt));
-      for (const h of hits) {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td>${h.user || "-"}</td>
-          <td>${h.workerId || "-"}</td>
-          <td>${h.requester || "-"}</td>
-          <td>${h.title || "-"}</td>
-          <td>${h.reward || 0}</td>
-          <td>${h.acceptedAt ? new Date(h.acceptedAt).toLocaleString() : "-"}</td>
-        `;
-        tableBody.appendChild(tr);
-      }
-    }
-
-    // --- Desktop Notifications ---
-    const titlebar = document.querySelector(".titlebar");
-    const notifBtn = document.createElement("button");
-    notifBtn.id = "enableNotif";
-    notifBtn.textContent = "Enable notifications";
-    Object.assign(notifBtn.style, {
-      padding: "6px 10px",
-      borderRadius: "999px",
-      border: "1px solid #d1d5db",
-      background: "#ffffff",
-      cursor: "pointer",
-      fontSize: "12px"
-    });
-    titlebar.appendChild(notifBtn);
-
-    function updateNotifButtonVisibility() {
-      if (!("Notification" in window)) {
-        notifBtn.style.display = "none";
-        return;
-      }
-      notifBtn.style.display = Notification.permission === "granted" ? "none" : "inline-block";
-    }
-    updateNotifButtonVisibility();
-
-    notifBtn.addEventListener("click", async () => {
-      if (!("Notification" in window)) return;
-      try { await Notification.requestPermission(); } catch {}
-      updateNotifButtonVisibility();
-    });
-
-    const notifiedIds = new Set();
-    function notifyNewHit(h) {
-      if (!("Notification" in window)) return;
-      if (Notification.permission !== "granted") return;
-      if (!h?.assignmentId || notifiedIds.has(h.assignmentId)) return;
-
-      const title = `New HIT • ${h.requester || "Requester"}`;
-      const body  = `${h.title || "Untitled"}\nReward: $${h.reward || 0} • ${h.user || h.workerId || ""}`;
-      const n = new Notification(title, { body, tag: h.assignmentId, silent: true });
-      n.onclick = () => { window.focus(); try { n.close(); } catch {}; };
-
-      notifiedIds.add(h.assignmentId);
-      setTimeout(() => notifiedIds.delete(h.assignmentId), 120_000);
-      setTimeout(() => { try { n.close(); } catch {}; }, 8000);
-    }
-
-    // --- Firestore live HITs listener ---
-    onSnapshot(collection(db, "hits"), (snapshot) => {
-      const hits = [];
-      const newIds = new Set();
-      const hitsById = new Map();
-
-      snapshot.forEach(docSnap => {
-        const data = docSnap.data();
-        hits.push(data);
-        if (data.assignmentId) {
-          newIds.add(data.assignmentId);
-          hitsById.set(data.assignmentId, data);
-        }
-      });
-
-      if (knownIds.size > 0) {
-        const added = Array.from(newIds).filter(id => !knownIds.has(id));
-        if (added.length > 0) {
-          playSound();
-          for (const id of added) {
-            const h = hitsById.get(id);
-            if (h) notifyNewHit(h);
-          }
-        }
-      }
-
-      knownIds = newIds;
-      renderTable(hits);
-      console.log("✅ Live update:", hits.length, "active HIT(s)");
-    });
-  </script>
-
-  <style>
-    body {
-      font-family: "Segoe UI", Roboto, sans-serif;
-      background: #f8fafc;
-      color: #111827;
-      padding: 24px;
-    }
-    .titlebar {
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      gap:10px;
-      margin-bottom:20px;
-      flex-wrap:wrap;
-    }
-    h1 {
-      color: #0f62fe;
-      margin: 0;
-    }
-    #onlineCount {
-      font-size: 14px;
-      color: #6b7280;
-      background: #eef2ff;
-      border: 1px solid #e5e7eb;
-      border-radius: 999px;
-      padding: 4px 10px;
-    }
-    table.main {
-      width: 100%;
-      border-collapse: collapse;
-      background: white;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-      border-radius: 8px;
-      overflow: hidden;
-    }
-    th, td {
-      padding: 10px 12px;
-      border-bottom: 1px solid #e5e7eb;
-      text-align: left;
-    }
-    th {
-      background: #0f62fe;
-      color: white;
-      font-weight: 600;
-    }
-    tr:hover {
-      background: #f1f5f9;
-    }
-    .footer {
-      text-align: center;
-      margin-top: 12px;
-      color: #6b7280;
-      font-size: 13px;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>📊 AB2soft Summary Dashboard</title>
+<style>
+  body {
+    font-family: "Segoe UI", sans-serif;
+    background: #f8fafc;
+    color: #111827;
+    padding: 20px;
+  }
+  h1 {
+    text-align: center;
+    color: #0f62fe;
+    margin-bottom: 20px;
+  }
+  section {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    padding: 16px;
+    margin-bottom: 24px;
+  }
+  .team-link {
+    color: #0f62fe;
+    cursor: pointer;
+    font-weight: bold;
+    text-decoration: underline;
+  }
+  .team-link:hover {
+    color: #2563eb;
+  }
+  #summaryTable th, #summaryTable td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  #summaryTable th {
+    background: #0f62fe;
+    color: white;
+  }
+  .hidden { display: none; }
+  #detailsSection table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+  }
+  #detailsSection th, #detailsSection td {
+    padding: 6px 8px;
+    border-bottom: 1px solid #e5e7eb;
+  }
+  #detailsSection th {
+    background: #0f62fe;
+    color: white;
+  }
+</style>
 </head>
 <body>
-  <div class="titlebar">
-    <h1>🔥 MTurk Accepted HITs (Live Monitor)</h1>
-    <span id="onlineCount">0 online</span>
-  </div>
 
-  <table class="main">
+<h1>📊 AB2soft Earnings Summary</h1>
+
+<!-- 🔹 SUMMARY SECTION -->
+<section id="summarySection">
+  <h2>💰 Summary</h2>
+  <div id="totalEarnings" style="font-size:18px;font-weight:bold;color:#15803d;">
+    Total Earnings (All Teams): $0.00
+  </div>
+  <table id="summaryTable">
     <thead>
       <tr>
-        <th>User</th>
-        <th>Worker ID</th>
-        <th>Requester</th>
-        <th>Title</th>
-        <th>Reward ($)</th>
-        <th>Accepted At</th>
+        <th>Team</th>
+        <th>Total Earnings ($)</th>
+        <th>Members</th>
       </tr>
     </thead>
-    <tbody id="hits-body"></tbody>
+    <tbody></tbody>
   </table>
+</section>
 
-  <div class="footer">
-    Real-time updates • Plays sound & shows desktop notifications when new HIT arrives
-  </div>
+<!-- 🔹 DETAILED TEAM SECTION -->
+<section id="detailsSection" class="hidden">
+  <h2 id="teamHeader">Team Details</h2>
+  <button onclick="hideDetails()" style="margin-bottom:10px;">⬅ Back to Summary</button>
+  <table id="teamTable">
+    <thead>
+      <tr>
+        <th>SERVER IP</th>
+        <th>USERNAME</th>
+        <th>WORKER ID</th>
+        <th>Current Earnings</th>
+        <th>Last Month</th>
+        <th>Last Transfer ($)</th>
+        <th>Last Transfer Date</th>
+        <th>Next Transfer Date</th>
+        <th>Transfer Method</th>
+        <th>IP</th>
+        <th>Alert</th>
+        <th>Timestamp (BD)</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</section>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ✅ Firebase Config
+const firebaseConfig = {
+  apiKey: "AIzaSyBZKAO1xSMUWBWHusx8sfZGs0yd3QIKOqU",
+  authDomain: "hasibteam1-10981.firebaseapp.com",
+  projectId: "hasibteam1-10981",
+  storageBucket: "hasibteam1-10981.firebasestorage.app",
+  messagingSenderId: "537251545985",
+  appId: "1:537251545985:web:05b1667f9ec7eb6258de80"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// Time formatter (Bangladesh)
+function formatBDTime(t) {
+  try {
+    const d = new Date(t.seconds ? t.seconds * 1000 : new Date(t).getTime());
+    return d.toLocaleString("en-BD", { timeZone: "Asia/Dhaka", hour12: true });
+  } catch { return "—"; }
+}
+
+let allData = [];
+
+onSnapshot(collection(db, "earnings_logs"), (snap) => {
+  allData = [];
+  snap.forEach(docSnap => {
+    allData.push(docSnap.data());
+  });
+  renderSummary();
+});
+
+function renderSummary() {
+  const tbody = document.querySelector("#summaryTable tbody");
+  const totalElem = document.querySelector("#totalEarnings");
+  tbody.innerHTML = "";
+
+  const teamTotals = {};
+  let grandTotal = 0;
+
+  for (const d of allData) {
+    const team = d["TEAM"] || "Unknown";
+    const earnings = parseFloat(d.currentEarnings || 0);
+    grandTotal += earnings;
+    if (!teamTotals[team]) teamTotals[team] = { total: 0, members: 0 };
+    teamTotals[team].total += earnings;
+    teamTotals[team].members++;
+  }
+
+  totalElem.textContent = `Total Earnings (All Teams): $${grandTotal.toFixed(2)}`;
+
+  Object.entries(teamTotals).forEach(([team, data]) => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td><span class="team-link" onclick="showDetails('${team}')">${team}</span></td>
+      <td>$${data.total.toFixed(2)}</td>
+      <td>${data.members}</td>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
+window.showDetails = (team) => {
+  const detailSection = document.querySelector("#detailsSection");
+  const summarySection = document.querySelector("#summarySection");
+  const teamHeader = document.querySelector("#teamHeader");
+  const tbody = document.querySelector("#teamTable tbody");
+  teamHeader.textContent = `Team: ${team}`;
+  summarySection.classList.add("hidden");
+  detailSection.classList.remove("hidden");
+  tbody.innerHTML = "";
+
+  const teamData = allData.filter(d => (d["TEAM"] || "") === team);
+  for (const d of teamData) {
+    const alertHTML = d.alert?.trim()
+      ? `<span style="color:#dc2626;font-weight:600;">${d.alert}</span>`
+      : `<span style="color:#16a34a;">✔ OK</span>`;
+    tbody.innerHTML += `
+      <tr>
+        <td>${d["SERVER IP"] || ""}</td>
+        <td>${d["USERNAME"] || ""}</td>
+        <td>${d["WORKER ID"] || ""}</td>
+        <td>${d.currentEarnings || ""}</td>
+        <td>${d.lastMonthEarnings || ""}</td>
+        <td>${d.lastTransferAmount || ""}</td>
+        <td>${d.lastTransferDate || ""}</td>
+        <td>${d.nextTransferDate || ""}</td>
+        <td>${d.bankAccount || ""}</td>
+        <td>${d.ip || ""}</td>
+        <td>${alertHTML}</td>
+        <td>${formatBDTime(d.timestamp)}</td>
+      </tr>
+    `;
+  }
+};
+
+window.hideDetails = () => {
+  document.querySelector("#detailsSection").classList.add("hidden");
+  document.querySelector("#summarySection").classList.remove("hidden");
+};
+</script>
 </body>
 </html>
