@@ -36,7 +36,7 @@
     color: white;
   }
   tr:hover { background: #f1f5f9; }
-  .back-btn {
+  .back-btn, .download {
     padding: 8px 12px;
     background: #0f62fe;
     color: white;
@@ -44,7 +44,12 @@
     border: none;
     border-radius: 6px;
     cursor: pointer;
+    margin-right: 8px;
   }
+  .download {
+    background: #16a34a;
+  }
+  .download:hover { background: #15803d; }
   .back-btn:hover { background: #1e40af; }
   .ip-alert {
     color: #dc2626;
@@ -58,7 +63,14 @@
 <body>
 
 <button class="back-btn" onclick="window.location.href='index.html'">⬅ Back</button>
+
 <h1 id="teamTitle">TEAM REPORT</h1>
+
+<!-- EXPORT BUTTONS -->
+<div style="margin-bottom: 10px;">
+  <button class="download" onclick="downloadData('csv')">⬇️ Download CSV</button>
+  <button class="download" onclick="downloadData('xlsx')">⬇️ Download Excel</button>
+</div>
 
 <section>
   <table>
@@ -100,10 +112,11 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-// Read team parameter from URL
 const urlParams = new URLSearchParams(window.location.search);
 const teamParam = urlParams.get("team");
 document.getElementById("teamTitle").textContent = `TEAM: ${teamParam}`;
+
+let tableData = [];
 
 // Time formatting (Bangladesh)
 function getTimestampMillis(t) {
@@ -126,14 +139,31 @@ function formatBD(t) {
   });
 }
 
-// Load filtered team data
+// Load team logs
 onSnapshot(collection(db, "earnings_logs"), (snap) => {
   const tbody = document.getElementById("tableBody");
   tbody.innerHTML = "";
+  tableData = [];
 
   snap.forEach(docSnap => {
     const d = docSnap.data();
     if ((d["TEAM"] || "").trim() !== teamParam) return;
+
+    tableData.push({
+      serverIp: d["SERVER IP"] || "",
+      team: d["TEAM"] || "",
+      username: d["USERNAME"] || "",
+      workerId: d["WORKER ID"] || "",
+      currentEarnings: d.currentEarnings || "",
+      lastMonthEarnings: d.lastMonthEarnings || "",
+      lastTransferAmount: d.lastTransferAmount || "",
+      lastTransferDate: d.lastTransferDate || "",
+      nextTransferDate: d.nextTransferDate || "",
+      bankAccount: d.bankAccount || "",
+      ip: d.ip || "",
+      alert: d.alert || "",
+      timestamp: formatBD(d.timestamp)
+    });
 
     const alertHTML = d.alert?.trim()
       ? `<span style="color:#dc2626;font-weight:600;">${d.alert}</span>`
@@ -159,6 +189,47 @@ onSnapshot(collection(db, "earnings_logs"), (snap) => {
       </tr>`;
   });
 });
+
+// EXPORT FUNCTION
+window.downloadData = (type) => {
+  if (!tableData.length) {
+    alert("No data to export!");
+    return;
+  }
+
+  const headers = [
+    "SERVER IP","TEAM","USERNAME","WORKER ID","Current Earnings",
+    "Last Month","Last Transfer ($)","Last Transfer Date",
+    "Next Transfer Date","Transfer Method","IP","Alert","Timestamp (Bangladesh)"
+  ];
+
+  const rows = tableData.map(d => [
+    d.serverIp,d.team,d.username,d.workerId,d.currentEarnings,
+    d.lastMonthEarnings,d.lastTransferAmount,d.lastTransferDate,
+    d.nextTransferDate,d.bankAccount,d.ip,d.alert,d.timestamp
+  ]);
+
+  if (type === "csv") {
+    const csv = [headers, ...rows]
+      .map(r => r.map(x => `"${String(x).replace(/"/g,'""')}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${teamParam}_Report.csv`;
+    a.click();
+  }
+
+  if (type === "xlsx") {
+    import("https://cdn.sheetjs.com/xlsx-0.19.3/package/xlsx.mjs").then(XLSX => {
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, `${teamParam}`);
+      XLSX.writeFile(wb, `${teamParam}_Report.xlsx`);
+    });
+  }
+};
 </script>
 
 </body>
