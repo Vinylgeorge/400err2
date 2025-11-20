@@ -1,55 +1,56 @@
 // ==UserScript==
-// @name         MTurk Cookie Auto-Cleaner (Safe)
-// @namespace    ab2soft.cleaner
-// @version      1.0
-// @description  Auto-delete only oversized cookies on MTurk to prevent 400 Bad Request errors without breaking login.
-// @match        https://worker.mturk.com/*
-// @match        https://www.mturk.com/*
-// @match        https://www.mturkcontent.com/*
+// @name         MTurk Global Cookie Auto-Cleaner (Safe)
+// @namespace    ab2soft.mturk.cleaner
+// @version      2.0
+// @description  Auto-delete only oversized cookies on ALL MTurk domains without breaking login sessions.
+// @match        *://*.mturk.com/*
+// @match        *://mturk.com/*
+// @match        *://*.mturkcontent.com/*
+// @match        *://mturkcontent.com/*
 // @grant        none
 // ==/UserScript==
 
 (function() {
     'use strict';
 
-    // Cookies that MUST NOT be deleted (login/session)
-    const PROTECT = [
+    // Session cookies that must NOT be deleted
+    const PROTECTED = [
         "session-token",
-        "sess-at-main",
         "at-main",
+        "sess-at-main",
         "ubid-main",
         "x-main",
-        "x-main-",
-        "aws-userInfo",
+        "aws-userInfo"
     ];
 
     function isProtected(name) {
-        return PROTECT.some(p => name.startsWith(p));
+        return PROTECTED.some(p => name.startsWith(p));
     }
 
     function cleanCookies() {
         const cookies = document.cookie.split(";");
 
-        cookies.forEach(cookie => {
-            const trimmed = cookie.trim();
-            const name = trimmed.split("=")[0];
+        cookies.forEach(raw => {
+            const cookie = raw.trim();
+            const name = cookie.split("=")[0];
 
-            // Skip protected cookies
+            // Skip protected cookies (login/session)
             if (isProtected(name)) return;
 
-            // Delete only cookies larger than 300 characters
-            if (trimmed.length > 300) {
-                document.cookie = `${name}=;path=/;expires=Thu, 01 Jan 1970 00:00:00 GMT`;
-                console.log("🧹 Deleted oversized cookie:", name, "(size:", trimmed.length, ")");
+            // Delete if cookie is too big
+            if (cookie.length > 350) {
+                document.cookie =
+                    name + "=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+                console.log("🧹 Deleted oversized MTurk cookie:", name, "size:", cookie.length);
             }
         });
     }
 
-    // Run every 15 seconds
-    setInterval(cleanCookies, 15000);
+    // Clean every 10 seconds
+    setInterval(cleanCookies, 10000);
 
-    // Run immediately on page load
+    // Clean immediately on page load
     cleanCookies();
 
-    console.log("✅ MTurk Safe Cookie Cleaner Loaded");
+    console.log("✅ MTurk Global Cookie Auto-Cleaner Loaded");
 })();
