@@ -151,21 +151,54 @@ onSnapshot(collection(db, "earnings_logs"), (snap) => {
   snap.forEach(docSnap => {
     const d = docSnap.data();
 
-    if (!d["TEAM"] || d["TEAM"] !== teamName) return;
+    /* ===========================================================
+       STRICT SKIP RULE — SKIP IF ANY IMPORTANT FIELD MISSING
+    =========================================================== */
+    if (
+      !d["TEAM"] ||
+      d["TEAM"] !== teamName ||
+      d["TEAM"].trim().toUpperCase() === "UNKNOWN" ||
+
+      !d.currentEarnings ||
+      d.currentEarnings === "" ||
+      d.currentEarnings === "UNKNOWN" ||
+
+      !d.lastMonthEarnings ||
+      d.lastMonthEarnings === "" ||
+      d.lastMonthEarnings === "UNKNOWN" ||
+
+      !d.lastTransferAmount ||
+      d.lastTransferAmount === "" ||
+      d.lastTransferAmount === "UNKNOWN" ||
+
+      !d.lastTransferDate ||
+      d.lastTransferDate === "" ||
+      d.lastTransferDate === "UNKNOWN" ||
+
+      !d.nextTransferDate ||
+      d.nextTransferDate === "" ||
+      d.nextTransferDate === "UNKNOWN" ||
+
+      !d.bankAccount ||
+      d.bankAccount === "" ||
+      d.bankAccount === "UNKNOWN"
+    ) {
+      return; // skip row completely
+    }
 
     const raw = d.timestamp || d["TIMESTAMP"] || "";
 
     tableData.push({
       serverIp: d["SERVER IP"] || "",
-      team: d["TEAM"] || "",
+      team: d["TEAM"],
       username: d["USERNAME"] || "",
       workerId: d["WORKER ID"] || "",
-      currentEarnings: d["currentEarnings"] || "0",
-      lastMonthEarnings: d["lastMonthEarnings"] || "0",
-      lastTransferAmount: d["lastTransferAmount"] || "",
-      lastTransferDate: d["lastTransferDate"] || "",
-      nextTransferDate: d["nextTransferDate"] || "",
-      bankAccount: d["bankAccount"] || "",
+      currentEarnings: d.currentEarnings,
+      lastMonthEarnings: d.lastMonthEarnings,
+      lastTransferAmount: d.lastTransferAmount,
+      lastTransferDate: d.lastTransferDate,
+      nextTransferDate: d.nextTransferDate,
+      bankAccount: d.bankAccount,
       ip: d["ip"] || "",
       alert: d["alert"] || "",
       timestamp: formatBD(raw),
@@ -173,7 +206,7 @@ onSnapshot(collection(db, "earnings_logs"), (snap) => {
     });
   });
 
-  // Sort alerts first, then latest
+  // Sort alerts first, then by latest timestamp
   tableData.sort((a, b) => {
     const aA = a.alert?.startsWith("⚠️") ? 1 : 0;
     const bA = b.alert?.startsWith("⚠️") ? 1 : 0;
