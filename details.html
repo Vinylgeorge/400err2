@@ -99,10 +99,9 @@
 </section>
 
 <script type="module">
-/* ------------------ FIREBASE ------------------ */
 import { initializeApp } 
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getFirestore, collection, onSnapshot } 
+import { getFirestore, collection, onSnapshot }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -117,7 +116,15 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* ------------------ HELPERS ------------------ */
+/* ========================= HELPERS ========================= */
+
+function safeValue(newVal, oldVal) {
+  if (!newVal || newVal === "" || newVal === "UNKNOWN") {
+    return oldVal || "—";
+  }
+  return newVal;
+}
+
 function getTimestampMs(t) {
   if (!t) return 0;
   if (t.seconds) return t.seconds * 1000;
@@ -135,15 +142,18 @@ function formatBD(t) {
   });
 }
 
-/* ------------------ READ TEAM FROM URL ------------------ */
+/* ========================= URL TEAM ========================= */
+
 const urlParams = new URLSearchParams(window.location.search);
 const teamName = urlParams.get("team");
 document.getElementById("teamTitle").textContent = `Team: ${teamName}`;
 
-/* ------------------ LOAD FROM FIRESTORE ------------------ */
 let tableData = [];
 
+/* ========================= SNAPSHOT ========================= */
+
 onSnapshot(collection(db, "earnings_logs"), (snap) => {
+
   const tbody = document.querySelector("#detailsTable tbody");
   tbody.innerHTML = "";
   tableData = [];
@@ -151,62 +161,35 @@ onSnapshot(collection(db, "earnings_logs"), (snap) => {
   snap.forEach(docSnap => {
     const d = docSnap.data();
 
-    /* ===========================================================
-       STRICT SKIP RULE — SKIP IF ANY IMPORTANT FIELD MISSING
-    =========================================================== */
-    if (
-      !d["TEAM"] ||
-      d["TEAM"] !== teamName ||
-      d["TEAM"].trim().toUpperCase() === "UNKNOWN" ||
+    if (d.TEAM !== teamName) return;
 
-      !d.currentEarnings ||
-      d.currentEarnings === "" ||
-      d.currentEarnings === "UNKNOWN" ||
+    /* Apply fallback logic */
+    const row = {
+      serverIp: safeValue(d["SERVER IP"], d.prev_serverIp),
+      team: d.TEAM,
 
-      !d.lastMonthEarnings ||
-      d.lastMonthEarnings === "" ||
-      d.lastMonthEarnings === "UNKNOWN" ||
+      username: safeValue(d["USERNAME"], d.prev_username),
+      workerId: safeValue(d["WORKER ID"], d.prev_workerId),
 
-      !d.lastTransferAmount ||
-      d.lastTransferAmount === "" ||
-      d.lastTransferAmount === "UNKNOWN" ||
+      currentEarnings: safeValue(d.currentEarnings, d.prev_currentEarnings),
+      lastMonthEarnings: safeValue(d.lastMonthEarnings, d.prev_lastMonthEarnings),
+      lastTransferAmount: safeValue(d.lastTransferAmount, d.prev_lastTransferAmount),
+      lastTransferDate: safeValue(d.lastTransferDate, d.prev_lastTransferDate),
+      nextTransferDate: safeValue(d.nextTransferDate, d.prev_nextTransferDate),
 
-      !d.lastTransferDate ||
-      d.lastTransferDate === "" ||
-      d.lastTransferDate === "UNKNOWN" ||
+      bankAccount: safeValue(d.bankAccount, d.prev_bankAccount),
 
-      !d.nextTransferDate ||
-      d.nextTransferDate === "" ||
-      d.nextTransferDate === "UNKNOWN" ||
-
-      !d.bankAccount ||
-      d.bankAccount === "" ||
-      d.bankAccount === "UNKNOWN"
-    ) {
-      return; // skip row completely
-    }
-
-    const raw = d.timestamp || d["TIMESTAMP"] || "";
-
-    tableData.push({
-      serverIp: d["SERVER IP"] || "",
-      team: d["TEAM"],
-      username: d["USERNAME"] || "",
-      workerId: d["WORKER ID"] || "",
-      currentEarnings: d.currentEarnings,
-      lastMonthEarnings: d.lastMonthEarnings,
-      lastTransferAmount: d.lastTransferAmount,
-      lastTransferDate: d.lastTransferDate,
-      nextTransferDate: d.nextTransferDate,
-      bankAccount: d.bankAccount,
-      ip: d["ip"] || "",
+      ip: safeValue(d["ip"], d.prev_ip),
       alert: d["alert"] || "",
-      timestamp: formatBD(raw),
-      tsMillis: getTimestampMs(raw)
-    });
+
+      timestamp: formatBD(d.timestamp),
+      tsMillis: getTimestampMs(d.timestamp)
+    };
+
+    tableData.push(row);
   });
 
-  // Sort alerts first, then by latest timestamp
+  /* SORT rows: IP alert first, then latest timestamp */
   tableData.sort((a, b) => {
     const aA = a.alert?.startsWith("⚠️") ? 1 : 0;
     const bA = b.alert?.startsWith("⚠️") ? 1 : 0;
@@ -214,34 +197,39 @@ onSnapshot(collection(db, "earnings_logs"), (snap) => {
     return b.tsMillis - a.tsMillis;
   });
 
-  for (const row of tableData) {
-    const ipClass = row.alert?.includes("IP Changed") ? "ip-alert" : "ip-ok";
-    const alertHTML = row.alert?.trim()
-      ? `<span style="color:#dc2626;font-weight:600;">${row.alert}</span>`
+  /* RENDER TABLE */
+  for (const r of tableData) {
+    const ipClass = r.alert?.includes("IP Changed") ? "ip-alert" : "ip-ok";
+
+    const alertHTML = r.alert
+      ? `<span style="color:#dc2626;font-weight:600;">${r.alert}</span>`
       : `<span style="color:#16a34a;">✔ OK</span>`;
 
     tbody.innerHTML += `
       <tr>
-        <td>${row.serverIp}</td>
-        <td>${row.team}</td>
-        <td>${row.username}</td>
-        <td>${row.workerId}</td>
-        <td>${row.currentEarnings}</td>
-        <td>${row.lastMonthEarnings}</td>
-        <td>${row.lastTransferAmount}</td>
-        <td>${row.lastTransferDate}</td>
-        <td>${row.nextTransferDate}</td>
-        <td>${row.bankAccount}</td>
-        <td class="${ipClass}">${row.ip}</td>
+        <td>${r.serverIp}</td>
+        <td>${r.team}</td>
+        <td>${r.username}</td>
+        <td>${r.workerId}</td>
+        <td>${r.currentEarnings}</td>
+        <td>${r.lastMonthEarnings}</td>
+        <td>${r.lastTransferAmount}</td>
+        <td>${r.lastTransferDate}</td>
+        <td>${r.nextTransferDate}</td>
+        <td>${r.bankAccount}</td>
+        <td class="${ipClass}">${r.ip}</td>
         <td>${alertHTML}</td>
-        <td>${row.timestamp}</td>
+        <td>${r.timestamp}</td>
       </tr>
     `;
   }
+
 });
 
-/* ------------------ EXPORT FUNCTIONS ------------------ */
+/* ========================= EXPORT ========================= */
+
 window.downloadData = (type) => {
+
   if (!tableData.length) {
     alert("No data to export!");
     return;
@@ -253,10 +241,10 @@ window.downloadData = (type) => {
     "Transfer Method","IP","Alert","Timestamp"
   ];
 
-  const rows = tableData.map(d => [
-    d.serverIp,d.team,d.username,d.workerId,d.currentEarnings,
-    d.lastMonthEarnings,d.lastTransferAmount,d.lastTransferDate,
-    d.nextTransferDate,d.bankAccount,d.ip,d.alert,d.timestamp
+  const rows = tableData.map(r => [
+    r.serverIp, r.team, r.username, r.workerId, r.currentEarnings,
+    r.lastMonthEarnings, r.lastTransferAmount, r.lastTransferDate,
+    r.nextTransferDate, r.bankAccount, r.ip, r.alert, r.timestamp
   ]);
 
   if (type === "csv") {
