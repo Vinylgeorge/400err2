@@ -90,9 +90,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* ------------------ HELPERS ------------------ */
+/* ------------------ DATE HELPERS ------------------ */
 function parseBDdate(str) {
-  if (!str || typeof str !== "string") return null;
+  if (!str) return null;
   const [mm, dd, yyyy] = str.split("/").map(n => parseInt(n.trim()));
   if (!mm || !dd || !yyyy) return null;
   return new Date(yyyy, mm - 1, dd);
@@ -117,7 +117,7 @@ onSnapshot(collection(db, "earnings_logs"), (snap) => {
     const d = docSnap.data();
 
     /* ===========================================================
-       SKIP ANY WORKER IF REQUIRED FIELD IS MISSING OR UNKNOWN
+       STRICT SKIP RULE — SKIP IF ANY REQUIRED FIELD IS MISSING
     =========================================================== */
     if (
       !d.TEAM ||
@@ -127,9 +127,9 @@ onSnapshot(collection(db, "earnings_logs"), (snap) => {
       d.currentEarnings === "" ||
       d.currentEarnings === "UNKNOWN" ||
 
-      !d.lastMonth ||
-      d.lastMonth === "" ||
-      d.lastMonth === "UNKNOWN" ||
+      !d.lastMonthEarnings ||
+      d.lastMonthEarnings === "" ||
+      d.lastMonthEarnings === "UNKNOWN" ||
 
       !d.lastTransferAmount ||
       d.lastTransferAmount === "" ||
@@ -143,11 +143,11 @@ onSnapshot(collection(db, "earnings_logs"), (snap) => {
       d.nextTransferDate === "" ||
       d.nextTransferDate === "UNKNOWN" ||
 
-      !d.transferMethod ||
-      d.transferMethod === "" ||
-      d.transferMethod === "UNKNOWN"
+      !d.bankAccount ||
+      d.bankAccount === "" ||
+      d.bankAccount === "UNKNOWN"
     ) {
-      return; // skip this worker entirely
+      return; // skip that worker fully
     }
 
     const team = d.TEAM.trim();
@@ -157,17 +157,12 @@ onSnapshot(collection(db, "earnings_logs"), (snap) => {
 
     if (isNaN(curr) || isNaN(lastAmt) || !lastDateObj) return;
 
-    /* -----------------------
-         CALCULATE TOTAL
-    ----------------------- */
     let workerTotal = curr;
+
     if (isCurrentMonth(lastDateObj)) {
       workerTotal += lastAmt;
     }
 
-    /* -----------------------
-          GROUP BY TEAM
-    ----------------------- */
     if (!teamMap[team]) {
       teamMap[team] = { workers: 0, total: 0 };
     }
@@ -177,9 +172,6 @@ onSnapshot(collection(db, "earnings_logs"), (snap) => {
     totalAll += workerTotal;
   });
 
-  /* -----------------------
-       SORTED TEAM LIST
-  ----------------------- */
   const list = Object.keys(teamMap).map(team => ({
     team,
     workers: teamMap[team].workers,
@@ -188,9 +180,6 @@ onSnapshot(collection(db, "earnings_logs"), (snap) => {
 
   list.sort((a, b) => b.total - a.total);
 
-  /* -----------------------
-          RENDER
-  ----------------------- */
   const tbody = document.getElementById("teamBody");
   tbody.innerHTML = "";
 
