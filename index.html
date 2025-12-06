@@ -72,7 +72,6 @@
 </section>
 
 <script type="module">
-/* ------------------ FIREBASE ------------------ */
 import { initializeApp } 
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, collection, onSnapshot } 
@@ -90,10 +89,16 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-/* ------------------ DATE HELPERS ------------------ */
+/* ---------- HELPERS ---------- */
+function safeValue(newVal, oldVal) {
+  if (!newVal || newVal === "" || newVal === "UNKNOWN")
+    return oldVal || "—";
+  return newVal;
+}
+
 function parseBDdate(str) {
-  if (!str) return null;
-  const [mm, dd, yyyy] = str.split("/").map(n => parseInt(n.trim()));
+  if (!str || str === "—") return null;
+  const [mm, dd, yyyy] = str.split("/").map(v => parseInt(v));
   if (!mm || !dd || !yyyy) return null;
   return new Date(yyyy, mm - 1, dd);
 }
@@ -108,7 +113,7 @@ function isCurrentMonth(dateObj) {
   );
 }
 
-/* ------------------ MAIN SNAPSHOT ------------------ */
+/* ---------- SNAPSHOT ---------- */
 onSnapshot(collection(db, "earnings_logs"), (snap) => {
   const teamMap = {};
   let totalAll = 0;
@@ -116,56 +121,23 @@ onSnapshot(collection(db, "earnings_logs"), (snap) => {
   snap.forEach(docSnap => {
     const d = docSnap.data();
 
-    /* ===========================================================
-       STRICT SKIP RULE — SKIP IF ANY REQUIRED FIELD IS MISSING
-    =========================================================== */
-    if (
-      !d.TEAM ||
-      d.TEAM.trim().toUpperCase() === "UNKNOWN" ||
+    if (!d.TEAM || d.TEAM === "UNKNOWN") return;
 
-      !d.currentEarnings ||
-      d.currentEarnings === "" ||
-      d.currentEarnings === "UNKNOWN" ||
+    /* Use old data if new one missing */
+    const curr = parseFloat(safeValue(d.currentEarnings, d.prev_currentEarnings));
+    const lastAmt = parseFloat(safeValue(d.lastTransferAmount, d.prev_lastTransferAmount));
+    const lastDateStr = safeValue(d.lastTransferDate, d.prev_lastTransferDate);
 
-      !d.lastMonthEarnings ||
-      d.lastMonthEarnings === "" ||
-      d.lastMonthEarnings === "UNKNOWN" ||
+    const lastDateObj = parseBDdate(lastDateStr);
+    if (isNaN(curr)) return;
 
-      !d.lastTransferAmount ||
-      d.lastTransferAmount === "" ||
-      d.lastTransferAmount === "UNKNOWN" ||
-
-      !d.lastTransferDate ||
-      d.lastTransferDate === "" ||
-      d.lastTransferDate === "UNKNOWN" ||
-
-      !d.nextTransferDate ||
-      d.nextTransferDate === "" ||
-      d.nextTransferDate === "UNKNOWN" ||
-
-      !d.bankAccount ||
-      d.bankAccount === "" ||
-      d.bankAccount === "UNKNOWN"
-    ) {
-      return; // skip that worker fully
+    let workerTotal = curr;
+    if (lastDateObj && isCurrentMonth(lastDateObj)) {
+      if (!isNaN(lastAmt)) workerTotal += lastAmt;
     }
 
     const team = d.TEAM.trim();
-    const curr = parseFloat(d.currentEarnings);
-    const lastAmt = parseFloat(d.lastTransferAmount);
-    const lastDateObj = parseBDdate(d.lastTransferDate);
-
-    if (isNaN(curr) || isNaN(lastAmt) || !lastDateObj) return;
-
-    let workerTotal = curr;
-
-    if (isCurrentMonth(lastDateObj)) {
-      workerTotal += lastAmt;
-    }
-
-    if (!teamMap[team]) {
-      teamMap[team] = { workers: 0, total: 0 };
-    }
+    if (!teamMap[team]) teamMap[team] = { workers: 0, total: 0 };
 
     teamMap[team].workers++;
     teamMap[team].total += workerTotal;
