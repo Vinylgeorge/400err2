@@ -92,7 +92,7 @@ const db = getFirestore(app);
 
 /* ------------------ HELPERS ------------------ */
 function parseBDdate(str) {
-  if (!str) return null;
+  if (!str || typeof str !== "string") return null;
   const [mm, dd, yyyy] = str.split("/").map(n => parseInt(n.trim()));
   if (!mm || !dd || !yyyy) return null;
   return new Date(yyyy, mm - 1, dd);
@@ -102,7 +102,6 @@ function isCurrentMonth(dateObj) {
   if (!dateObj) return false;
   const nowBD = new Date().toLocaleString("en-US", { timeZone: "Asia/Dhaka" });
   const now = new Date(nowBD);
-
   return (
     dateObj.getMonth() === now.getMonth() &&
     dateObj.getFullYear() === now.getFullYear()
@@ -117,40 +116,81 @@ onSnapshot(collection(db, "earnings_logs"), (snap) => {
   snap.forEach(docSnap => {
     const d = docSnap.data();
 
-    const team = (d["TEAM"] || "").trim();
-    if (!team || team.toUpperCase() === "UNKNOWN") return;
+    /* ===========================================================
+       SKIP ANY WORKER IF REQUIRED FIELD IS MISSING OR UNKNOWN
+    =========================================================== */
+    if (
+      !d.TEAM ||
+      d.TEAM.trim().toUpperCase() === "UNKNOWN" ||
 
-    const curr = parseFloat(d.currentEarnings || 0);
-    const lastAmt = parseFloat(d.lastTransferAmount || 0);
+      !d.currentEarnings ||
+      d.currentEarnings === "" ||
+      d.currentEarnings === "UNKNOWN" ||
+
+      !d.lastMonth ||
+      d.lastMonth === "" ||
+      d.lastMonth === "UNKNOWN" ||
+
+      !d.lastTransferAmount ||
+      d.lastTransferAmount === "" ||
+      d.lastTransferAmount === "UNKNOWN" ||
+
+      !d.lastTransferDate ||
+      d.lastTransferDate === "" ||
+      d.lastTransferDate === "UNKNOWN" ||
+
+      !d.nextTransferDate ||
+      d.nextTransferDate === "" ||
+      d.nextTransferDate === "UNKNOWN" ||
+
+      !d.transferMethod ||
+      d.transferMethod === "" ||
+      d.transferMethod === "UNKNOWN"
+    ) {
+      return; // skip this worker entirely
+    }
+
+    const team = d.TEAM.trim();
+    const curr = parseFloat(d.currentEarnings);
+    const lastAmt = parseFloat(d.lastTransferAmount);
     const lastDateObj = parseBDdate(d.lastTransferDate);
 
-    let workerTotal = curr;
+    if (isNaN(curr) || isNaN(lastAmt) || !lastDateObj) return;
 
+    /* -----------------------
+         CALCULATE TOTAL
+    ----------------------- */
+    let workerTotal = curr;
     if (isCurrentMonth(lastDateObj)) {
       workerTotal += lastAmt;
     }
 
+    /* -----------------------
+          GROUP BY TEAM
+    ----------------------- */
     if (!teamMap[team]) {
       teamMap[team] = { workers: 0, total: 0 };
     }
 
     teamMap[team].workers++;
     teamMap[team].total += workerTotal;
-
     totalAll += workerTotal;
   });
 
-  // Convert to array
+  /* -----------------------
+       SORTED TEAM LIST
+  ----------------------- */
   const list = Object.keys(teamMap).map(team => ({
     team,
     workers: teamMap[team].workers,
     total: teamMap[team].total
   }));
 
-  // Sort by highest earnings
   list.sort((a, b) => b.total - a.total);
 
-  // Render
+  /* -----------------------
+          RENDER
+  ----------------------- */
   const tbody = document.getElementById("teamBody");
   tbody.innerHTML = "";
 
