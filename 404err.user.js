@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         🔒 AB2soft Earnings Report v6.4 (TM Compatible + UpdateBank Logic)
 // @namespace    ab2soft.secure
-// @version      6.4
+// @version      6.9
 // @description  Uploads MTurk earnings to Firebase only if TEAM exists in Sheet (once per day, password protected). Adds UPDATE BANK logic + lastMonth >=$1 filter.
 // @match        https://worker.mturk.com/earnings*
 // @run-at       document-idle
