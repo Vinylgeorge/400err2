@@ -35,7 +35,7 @@
 
   const PASS_HASH_HEX = '9b724d9df97a91d297dc1c714a3987338ebb60a2a53311d2e382411a78b9e07d';
 
-  // If ALL transfer rows are bank + Funds Sent, then force amounts to 0 and set transfer method to UPDATE BANK
+  // ✅ NEW RULE: If latest transfer is bank account AND status is NOT "Funds Sent" → UPDATE BANK + zero amounts
   const ENABLE_UPDATE_BANK_LOGIC = true;
 
   /* ────────────────────────────── HELPERS ────────────────────────────── */
@@ -146,7 +146,7 @@
   }
 
   function computeLastMonthEarnings(bodyData) {
-    // ✅ New logic: only count transfers >= $1 for last month sum
+    // ✅ only count transfers >= $1 for last month sum
     if (!Array.isArray(bodyData)) return '0.00';
 
     const now = new Date();
@@ -161,25 +161,28 @@
       if (!d) continue;
       if (d >= startLast && d <= endLast) {
         const amt = parseFloat(t.amountRequested) || 0;
-        total += (amt >= 1 ? amt : 0); // < $1 treated as 0
+        total += (amt >= 1 ? amt : 0);
       }
     }
     return total.toFixed(2);
   }
 
+  // ✅ NEW: trigger update bank only when LATEST row is bank transfer AND status != "funds sent"
   function shouldUpdateBankOnly(bodyData) {
-    // ✅ New logic: ONLY if rows are "Transfer to bank account" AND "Funds Sent"
     if (!Array.isArray(bodyData) || bodyData.length === 0) return false;
-    return bodyData.every(x => {
-      const type = String(x.type || '').toLowerCase();
-      const st   = String(x.status || '').toLowerCase();
-      return type.includes('bank account') && st === 'funds sent';
-    });
+
+    const latest = bodyData[0]; // table is usually newest first
+    const type = String(latest.type || '').toLowerCase();
+    const st   = String(latest.status || '').toLowerCase();
+
+    const isBank = type.includes('bank account');
+    const isFundsSent = (st === 'funds sent');
+
+    return isBank && !isFundsSent;
   }
 
   /* ────────────────────────────── DATA EXTRACT ────────────────────────────── */
   async function extractData() {
-    // wait until page has worker bar + current earnings
     await waitFor(() => getWorkerId() || $('.me-bar'), 15000);
 
     const html = document.body.innerHTML.replace(/\s+/g, ' ');
@@ -218,7 +221,7 @@
     let finalLastMonthEarnings = lastMonthEarnings;
     let finalLastTransferAmount = lastTransferAmount;
 
-    // ✅ Apply UPDATE BANK rule
+    // ✅ Apply NEW UPDATE BANK rule (only when latest bank transfer is NOT "Funds Sent")
     if (updateBankFlag) {
       finalCurrentEarnings = '0.00';
       finalLastMonthEarnings = '0.00';
@@ -233,7 +236,7 @@
       lastTransferAmount: finalLastTransferAmount,
       lastTransferDate,
       nextTransferDate,
-      bankAccount: finalBankAccount, // "Transfer Method (Bank/GC)" field uses this
+      bankAccount: finalBankAccount,
       ip,
       lastMonthEarnings: finalLastMonthEarnings,
       _updateBankFlag: updateBankFlag
@@ -246,7 +249,6 @@
     try {
       const text = await gmGet(SHEET_CSV);
 
-      // Basic CSV split (your sheet appears simple; if you have commas inside quotes, tell me and I’ll swap to a real CSV parser)
       const rows = text.split(/\r?\n/).filter(Boolean).map(r => r.split(','));
       const headers = rows.shift().map(h => h.trim());
 
@@ -282,7 +284,6 @@
   }
 
   /* ────────────────────────────── MAIN LOGIC ────────────────────────────── */
-  // Firebase dynamic imports (works in TM if @connect www.gstatic.com is present)
   const { initializeApp } = await import(FIREBASE_APP_JS);
   const { getFirestore, doc, setDoc } = await import(FIRESTORE_JS);
 
@@ -298,7 +299,7 @@
   // ✅ Once per day (Bangladesh time)
   const todayKey  = `lastSync_${data.workerId}`;
   const lastSync  = await GM_getValue(todayKey, '');
-  const todayDate = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Dhaka' }); // YYYY-MM-DD
+  const todayDate = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Dhaka' });
 
   if (lastSync === todayDate) {
     console.log(`[AB2soft] Skipped ${data.workerId}: already synced today`);
@@ -333,4 +334,5 @@
 
   toast(`✅ Synced ${data.workerId} (${teamName}) → Firebase`);
   console.log(`[AB2soft] Synced ${data.workerId}`, mergedData);
+
 })();
